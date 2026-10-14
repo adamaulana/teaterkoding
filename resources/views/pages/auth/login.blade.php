@@ -1,59 +1,67 @@
-<x-layouts::auth :title="__('Log in')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password below to log in')" />
+<x-layouts::auth-guest title="Masuk">
+    <div class="rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-8">
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-800">
+            Selamat datang kembali
+        </h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Masuk menggunakan akun guru atau admin Anda.
+        </p>
 
-        <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        @if (session('status'))
+            <div class="mt-4">
+                <x-ui.alert variant="info">{{ session('status') }}</x-ui.alert>
+            </div>
+        @endif
 
-        <x-passkey-verify />
-
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('login.store') }}" class="mt-6 space-y-5">
             @csrf
 
-            <!-- Email Address -->
-            <flux:input
+            <x-ui.input
+                label="Alamat Email"
                 name="email"
-                :label="__('Email address')"
-                :value="old('email')"
                 type="email"
-                required
-                autofocus
+                value="{{ old('email') }}"
                 autocomplete="email"
-                placeholder="email@example.com"
+                placeholder="nama@sekolah.sch.id"
+                autofocus
+                required
             />
 
-            <!-- Password -->
-            <div class="relative">
-                <flux:input
-                    name="password"
-                    :label="__('Password')"
-                    type="password"
-                    required
-                    autocomplete="current-password"
-                    :placeholder="__('Password')"
-                    viewable
-                />
+            <x-ui.input
+                label="Kata Sandi"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="••••••••"
+                required
+            />
+
+            <div class="flex items-center justify-between gap-3">
+                <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                    <input
+                        type="checkbox"
+                        name="remember"
+                        value="1"
+                        @checked(old('remember'))
+                        class="size-4 rounded border-line text-primary-600 focus:ring-primary-500/40"
+                    >
+                    Ingat saya
+                </label>
 
                 @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                        {{ __('Forgot your password?') }}
-                    </flux:link>
+                    <a href="{{ route('password.request') }}" class="text-sm font-medium text-primary-700 transition hover:text-primary-800">
+                        Lupa kata sandi?
+                    </a>
                 @endif
             </div>
 
-            <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
-
-            <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
-                    {{ __('Log in') }}
-                </flux:button>
-            </div>
+            <x-ui.button variant="primary" type="submit" class="w-full">
+                Masuk
+            </x-ui.button>
         </form>
 
-        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
-            <span>{{ __('Don\'t have an account?') }}</span>
-            <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
-        </div>
+        <p class="mt-6 text-center text-xs text-slate-400">
+            Akun dibuat oleh admin sekolah. Hubungi admin jika Anda belum memiliki akun.
+        </p>
     </div>
-</x-layouts::auth>
+</x-layouts::auth-guest>

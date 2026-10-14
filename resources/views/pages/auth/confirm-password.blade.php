@@ -1,36 +1,35 @@
-<x-layouts::auth :title="__('Confirm password')">
-    <div class="flex flex-col gap-6">
-        <x-auth-header
-            :title="__('Confirm password')"
-            :description="__('This is a secure area of the application. Please confirm your password before continuing.')"
-        />
+<x-layouts::auth-guest title="Konfirmasi Kata Sandi">
+    <div class="rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-8">
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-800">
+            Konfirmasi kata sandi
+        </h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Ini adalah area aman. Masukkan kata sandi Anda untuk melanjutkan.
+        </p>
 
-        <x-auth-session-status class="text-center" :status="session('status')" />
-
-        <x-passkey-verify
-            options-route="passkey.confirm-options"
-            submit-route="passkey.confirm"
-            :label="__('Confirm with passkey')"
-            :loading-label="__('Confirming...')"
-            :separator="__('Or confirm with password')"
-        />
-
-        <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('password.confirm.store') }}" class="mt-6 space-y-5">
             @csrf
 
-            <flux:input
+            <x-ui.input
+                label="Kata Sandi"
                 name="password"
-                :label="__('Password')"
                 type="password"
-                required
                 autocomplete="current-password"
-                :placeholder="__('Password')"
-                viewable
+                autofocus
+                required
             />
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="confirm-password-button">
-                {{ __('Confirm') }}
-            </flux:button>
+            <x-ui.button variant="primary" type="submit" class="w-full">
+                Konfirmasi
+            </x-ui.button>
+        </form>
+
+        <form method="POST" action="{{ route('logout') }}" class="mt-4 text-center">
+            @csrf
+
+            <button type="submit" class="text-sm font-medium text-slate-500 transition hover:text-slate-700">
+                Keluar
+            </button>
         </form>
     </div>
-</x-layouts::auth>
+</x-layouts::auth-guest>

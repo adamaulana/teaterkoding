@@ -19,6 +19,13 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 /*
+| Unit test juga memakai TestCase agar service (yang membaca config/DB)
+| bisa diuji tanpa UI. RefreshDatabase tetap harus dinyatakan eksplisit
+| di tiap file (uses(RefreshDatabase::class)) seperti pada Feature.
+*/
+pest()->extend(TestCase::class)->in('Unit');
+
+/*
 |--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------

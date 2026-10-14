@@ -1,9 +1,10 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
@@ -66,4 +67,54 @@ test('users can logout', function () {
     $response->assertRedirect(route('home'));
 
     $this->assertGuest();
+});
+
+// ---------- Fase 4: akun nonaktif tidak boleh login ----------
+
+test('akun yang dinonaktifkan tidak dapat login', function () {
+    $user = User::factory()->create(['is_active' => false]);
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+});
+
+test('pesan galat akun nonaktif menjelaskan sebabnya', function () {
+    $user = User::factory()->create(['is_active' => false]);
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors(['email' => 'Akun ini dinonaktifkan. Hubungi admin.']);
+
+    $this->assertGuest();
+});
+
+test('akun yang diaktifkan kembali dapat login', function () {
+    $user = User::factory()->create(['is_active' => false]);
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+
+    $user->forceFill(['is_active' => true])->save();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasNoErrors();
+
+    $this->assertAuthenticated();
+});
+
+test('akun baru aktif secara default', function () {
+    $user = User::factory()->create();
+
+    expect((bool) $user->fresh()->is_active)->toBeTrue();
 });

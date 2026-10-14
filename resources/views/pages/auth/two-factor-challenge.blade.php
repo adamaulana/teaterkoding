@@ -1,101 +1,40 @@
-<x-layouts::auth :title="__('Two-factor authentication')">
-    <div class="flex flex-col gap-6">
-        <div
-            class="relative w-full h-auto"
-            x-cloak
-            x-data="{
-                showRecoveryInput: @js($errors->has('recovery_code')),
-                code: '',
-                recovery_code: '',
-                focusOtp() {
-                    this.$nextTick(() => this.$refs.otp?.querySelector('input')?.focus());
-                },
-                init() {
-                    if (! this.showRecoveryInput) {
-                        this.focusOtp();
-                    }
-                },
-                toggleInput() {
-                    this.showRecoveryInput = !this.showRecoveryInput;
+<x-layouts::auth-guest title="Tantangan Dua Faktor">
+    <div class="rounded-2xl border border-line bg-white p-6 shadow-sm sm:p-8">
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-800">
+            Dua faktor
+        </h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Masukkan kode dari aplikasi autentikator Anda, atau gunakan kode pemulihan.
+        </p>
 
-                    this.code = '';
-                    this.recovery_code = '';
+        <form method="POST" action="{{ route('two-factor.login') }}" class="mt-6 space-y-5">
+            @csrf
 
-                    $nextTick(() => {
-                        this.showRecoveryInput
-                            ? this.$refs.recovery_code?.focus()
-                            : this.focusOtp();
-                    });
-                },
-            }"
-        >
-            <div x-show="!showRecoveryInput">
-                <x-auth-header
-                    :title="__('Authentication code')"
-                    :description="__('Enter the authentication code provided by your authenticator application.')"
-                />
+            <x-ui.input
+                label="Kode Autentikator"
+                name="code"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="one-time-code"
+                placeholder="Contoh: 123456"
+                autofocus
+            />
+
+            <div class="flex items-center gap-3">
+                <span class="h-px flex-1 bg-line"></span>
+                <span class="text-xs uppercase tracking-wider text-slate-400">atau</span>
+                <span class="h-px flex-1 bg-line"></span>
             </div>
 
-            <div x-show="showRecoveryInput">
-                <x-auth-header
-                    :title="__('Recovery code')"
-                    :description="__('Please confirm access to your account by entering one of your emergency recovery codes.')"
-                />
-            </div>
+            <x-ui.input
+                label="Kode Pemulihan"
+                name="recovery_code"
+                placeholder="Masukkan kode pemulihan"
+            />
 
-            <form method="POST" action="{{ route('two-factor.login.store') }}">
-                @csrf
-
-                <div class="space-y-5 text-center">
-                    <div x-show="!showRecoveryInput">
-                        <div class="flex items-center justify-center my-5" x-ref="otp">
-                            <flux:otp
-                                x-model="code"
-                                length="6"
-                                name="code"
-                                label="OTP Code"
-                                label:sr-only
-                                class="mx-auto"
-                             />
-                        </div>
-                    </div>
-
-                    <div x-show="showRecoveryInput">
-                        <div class="my-5">
-                            <flux:input
-                                type="text"
-                                name="recovery_code"
-                                x-ref="recovery_code"
-                                x-bind:required="showRecoveryInput"
-                                autocomplete="one-time-code"
-                                x-model="recovery_code"
-                            />
-                        </div>
-
-                        @error('recovery_code')
-                            <flux:text color="red">
-                                {{ $message }}
-                            </flux:text>
-                        @enderror
-                    </div>
-
-                    <flux:button
-                        variant="primary"
-                        type="submit"
-                        class="w-full"
-                    >
-                        {{ __('Continue') }}
-                    </flux:button>
-                </div>
-
-                <div class="mt-5 space-x-0.5 text-sm leading-5 text-center">
-                    <span class="opacity-50">{{ __('or you can') }}</span>
-                    <div class="inline font-medium underline cursor-pointer opacity-80">
-                        <span x-show="!showRecoveryInput" @click="toggleInput()">{{ __('login using a recovery code') }}</span>
-                        <span x-show="showRecoveryInput" @click="toggleInput()">{{ __('login using an authentication code') }}</span>
-                    </div>
-                </div>
-            </form>
-        </div>
+            <x-ui.button variant="primary" type="submit" class="w-full">
+                Verifikasi
+            </x-ui.button>
+        </form>
     </div>
-</x-layouts::auth>
+</x-layouts::auth-guest>
