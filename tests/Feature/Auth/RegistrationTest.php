@@ -1,29 +1,38 @@
 <?php
 
-use Laravel\Fortify\Features;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::registration());
+/*
+| Aplikasi ini TIDAK menyediakan pendaftaran publik: akun guru/admin dibuat
+| oleh admin (AdminGuruSeeder / halaman Pengguna), sedangkan siswa masuk lewat
+| kode akses. Karena itu `config/fortify.php` sengaja tidak mengaktifkan
+| Features::registration(). Test di bawah MENGUNCI keputusan itu, sehingga
+| fitur registrasi tidak diam-diam menyala kembali tanpa disadari.
+*/
+
+test('halaman registrasi tidak tersedia', function () {
+    $respons = $this->get('/register');
+
+    // Fortify tidak mendaftarkan rute ini, jadi 404. Bila suatu saat fitur
+    // dinyalakan, rute akan ada dan test ini gagal (memaksa peninjauan ulang).
+    $respons->assertNotFound();
 });
 
-test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
+test('permintaan registrasi tidak membuat user baru', function () {
+    $sebelum = User::count();
 
-    $response->assertOk();
-});
-
-test('new users can register', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'John Doe',
-        'email' => 'test@example.com',
+    $respons = $this->post('/register', [
+        'name' => 'Penyusup',
+        'email' => 'penyusup@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
 
-    $response->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+    $respons->assertNotFound();
 
-    $this->assertAuthenticated();
+    expect(User::count())->toBe($sebelum)
+        ->and(User::query()->where('email', 'penyusup@example.com')->exists())->toBeFalse();
 });

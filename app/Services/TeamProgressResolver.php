@@ -42,7 +42,7 @@ class TeamProgressResolver
         $submission = Submission::query()
             ->whereIn('team_id', $teamIds)
             ->orderByDesc('submitted_at')
-            ->get(['submission_id', 'team_id', 'mission_id', 'submitted_at', 'all_passed'])
+            ->get(['submission_id', 'team_id', 'mission_id', 'submitted_at', 'all_passed', 'status'])
             ->groupBy('team_id');
 
         $bugTerakhir = BugAttempt::query()
@@ -108,7 +108,7 @@ class TeamProgressResolver
         $levelAktif = $levelDimulai->isEmpty() ? null : (int) $levelDimulai->max();
 
         $levelLulus = $submissionTim
-            ->filter(fn (Submission $s) => (bool) $s->all_passed)
+            ->filter(fn (Submission $s) => $s->sudahDinilai() && (bool) $s->all_passed)
             ->map(fn (Submission $s) => $levelPerMisi[(int) $s->mission_id] ?? null)
             ->filter()
             ->unique()
@@ -182,15 +182,22 @@ class TeamProgressResolver
 
         // (a) Gagal beruntun diperiksa LEBIH DULU karena paling informatif:
         // guru langsung tahu kelompok tersangkut di misi tertentu.
+        // Submission 'menunggu'/'galat'/'waktu_habis' TIDAK dihitung gagal.
         if ($submissionTim->isNotEmpty()) {
-            $misiTerakhir = (int) $submissionTim->first()->mission_id;
+            $dinilai = $submissionTim
+                ->filter(fn (Submission $s) => $s->sudahDinilai())
+                ->values();
 
-            $gagalBeruntun = $submissionTim
-                ->takeWhile(fn (Submission $s) => (int) $s->mission_id === $misiTerakhir && ! (bool) $s->all_passed)
-                ->count();
+            if ($dinilai->isNotEmpty()) {
+                $misiTerakhir = (int) $dinilai->first()->mission_id;
 
-            if ($gagalBeruntun >= $batasGagal) {
-                return [true, $gagalBeruntun.' kali gagal beruntun'];
+                $gagalBeruntun = $dinilai
+                    ->takeWhile(fn (Submission $s) => (int) $s->mission_id === $misiTerakhir && ! (bool) $s->all_passed)
+                    ->count();
+
+                if ($gagalBeruntun >= $batasGagal) {
+                    return [true, $gagalBeruntun.' kali gagal beruntun'];
+                }
             }
         }
 

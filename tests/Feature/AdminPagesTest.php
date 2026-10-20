@@ -8,7 +8,14 @@ uses(RefreshDatabase::class);
 test('halaman admin dapat diakses oleh admin', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 
-    foreach (['/admin/dashboard', '/admin/profil', '/admin/ganti-password', '/admin/pengguna'] as $path) {
+    foreach ([
+        '/admin/dashboard',
+        '/admin/profil',
+        '/admin/ganti-password',
+        '/admin/pengguna',
+        // Fase 6 — verifikasi hasil penilaian di perangkat siswa.
+        '/admin/verifikasi-penilaian',
+    ] as $path) {
         $this->actingAs($admin)->get($path)->assertOk();
     }
 });

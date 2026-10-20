@@ -289,6 +289,11 @@ class SumativeScoreCalculator
         $semua = Submission::query()
             ->whereIn('team_id', $teamIds)
             ->where('mission_id', $missionId)
+            // Hanya hasil FINAL yang boleh masuk rekap. Submission
+            // 'menunggu_verifikasi' (sumatif, hasil perangkat belum disetujui
+            // guru) dan 'menunggu'/'galat' sengaja diabaikan supaya poin tidak
+            // pernah dihitung sebelum verifikasi guru.
+            ->where('status', Submission::STATUS_DINILAI)
             ->orderBy('submitted_at')
             ->orderBy('submission_id')
             ->get(['submission_id', 'team_id', 'mission_id', 'submitted_at', 'all_passed'])

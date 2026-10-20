@@ -17,7 +17,15 @@ use Illuminate\Support\Carbon;
  * @property string|null $fixed_code
  * @property bool $is_solved
  * @property Carbon|null $solved_at
- * @property string $grading_status belum|menunggu|dinilai|galat|waktu_habis
+ * @property string $grading_status belum|menunggu|dinilai|galat|waktu_habis|menunggu_verifikasi
+ * @property string|null $grading_source klien|terverifikasi|server
+ * @property string|null $grading_nonce
+ * @property Carbon|null $nonce_expires_at
+ * @property array<string, mixed>|null $client_report
+ * @property Carbon|null $verified_at
+ * @property int|null $verified_by
+ * @property bool $has_mismatch
+ * @property array<string, mixed>|null $mismatch_detail
  * @property string|null $error_message
  * @property int $hints_used
  * @property Carbon $attempted_at
@@ -31,6 +39,14 @@ use Illuminate\Support\Carbon;
     'is_solved',
     'solved_at',
     'grading_status',
+    'grading_source',
+    'grading_nonce',
+    'nonce_expires_at',
+    'client_report',
+    'verified_at',
+    'verified_by',
+    'has_mismatch',
+    'mismatch_detail',
     'error_message',
     'hints_used',
     'attempted_at',
@@ -46,6 +62,15 @@ class BugAttempt extends Model
     public const STATUS_GALAT = 'galat';
 
     public const STATUS_WAKTU_HABIS = 'waktu_habis';
+
+    /** Hasil perangkat siswa sudah masuk, menunggu verifikasi guru (sumatif). */
+    public const STATUS_MENUNGGU_VERIFIKASI = 'menunggu_verifikasi';
+
+    public const SUMBER_KLIEN = 'klien';
+
+    public const SUMBER_TERVERIFIKASI = 'terverifikasi';
+
+    public const SUMBER_SERVER = 'server';
 
     protected $table = 'bug_attempts';
 
@@ -64,6 +89,11 @@ class BugAttempt extends Model
             'released_at' => 'datetime',
             'solved_at' => 'datetime',
             'hints_used' => 'integer',
+            'nonce_expires_at' => 'datetime',
+            'client_report' => 'array',
+            'verified_at' => 'datetime',
+            'has_mismatch' => 'boolean',
+            'mismatch_detail' => 'array',
         ];
     }
 
@@ -85,6 +115,7 @@ class BugAttempt extends Model
             self::STATUS_DINILAI => 'Sudah dinilai',
             self::STATUS_GALAT => 'Galat',
             self::STATUS_WAKTU_HABIS => 'Waktu habis',
+            self::STATUS_MENUNGGU_VERIFIKASI => 'Menunggu verifikasi',
             default => 'Belum dikerjakan',
         };
     }
@@ -99,6 +130,8 @@ class BugAttempt extends Model
             self::STATUS_DINILAI => 'sukses',
             self::STATUS_GALAT => 'bahaya',
             self::STATUS_WAKTU_HABIS => 'peringatan',
+            // Netral: bukan gagal, bukan lulus.
+            self::STATUS_MENUNGGU_VERIFIKASI => 'netral',
             default => 'netral',
         };
     }
@@ -127,6 +160,16 @@ class BugAttempt extends Model
     public function releasedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'released_by');
+    }
+
+    /**
+     * Guru/admin yang memverifikasi hasil percobaan ini (level sumatif).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     /**

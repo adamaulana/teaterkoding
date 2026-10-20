@@ -20,6 +20,8 @@ class KartuBugForm extends Form
 
     public string $bug_title = '';
 
+    public string $symptom_text = '';
+
     public string $buggy_code = '';
 
     public string $hint_text = '';
@@ -33,6 +35,7 @@ class KartuBugForm extends Form
         $this->bugId = $kartu->bug_id;
         $this->level_id = $kartu->level_id;
         $this->bug_title = $kartu->bug_title;
+        $this->symptom_text = (string) ($kartu->symptom_text ?? '');
         $this->buggy_code = $kartu->buggy_code;
         $this->hint_text = (string) ($kartu->hint_text ?? '');
         $this->fix_explanation = $kartu->fix_explanation;
@@ -53,6 +56,7 @@ class KartuBugForm extends Form
         return [
             'level_id' => ['required', 'integer', Rule::exists('levels', 'level_id')],
             'bug_title' => ['required', 'string', 'max:100'],
+            'symptom_text' => ['nullable', 'string', 'max:2000'],
             'buggy_code' => ['required', 'string', 'max:5000'],
             'hint_text' => ['nullable', 'string', 'max:2000'],
             'fix_explanation' => ['required', 'string', 'max:5000'],
@@ -70,6 +74,7 @@ class KartuBugForm extends Form
             'level_id.exists' => 'Level yang dipilih tidak ditemukan.',
             'bug_title.required' => 'Judul bug wajib diisi.',
             'bug_title.max' => 'Judul bug maksimal 100 karakter.',
+            'symptom_text.max' => 'Gejala maksimal 2000 karakter.',
             'buggy_code.required' => 'Kode bermasalah wajib diisi.',
             'buggy_code.max' => 'Kode bermasalah maksimal 5000 karakter.',
             'hint_text.max' => 'Teks petunjuk maksimal 2000 karakter.',

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Actions\GenerateKodeUnlock;
 use App\Models\Mission;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
@@ -40,11 +41,13 @@ class MisiForm extends Form
         $this->unlock_code = $this->normalisasi($value);
     }
 
+    /**
+     * Normalisasi kode unlock memakai SATU sumber aturan (GenerateKodeUnlock)
+     * agar form guru dan pencarian kode oleh siswa tidak pernah menyimpang.
+     */
     public function normalisasi(string $kode): string
     {
-        $kode = mb_strtoupper(trim($kode));
-
-        return mb_substr((string) preg_replace('/[^A-Z0-9-]/', '', $kode), 0, 30);
+        return app(GenerateKodeUnlock::class)->normalisasi($kode);
     }
 
     /**

@@ -270,13 +270,33 @@ class extends Component
             [
                 'key' => 'hasil',
                 'label' => 'Hasil',
-                'format' => fn (Submission $row) => Blade::render(
-                    '<x-ui.badge :variant="$variant">{{ $label }}</x-ui.badge>',
-                    [
-                        'variant' => $row->all_passed ? 'sukses' : 'peringatan',
-                        'label' => $row->all_passed ? 'Semua lulus' : 'Sebagian gagal',
-                    ],
-                ),
+                'format' => function (Submission $row) {
+                    // Submission 'menunggu' TIDAK dihitung sebagai lulus/gagal.
+                    if ($row->status === 'menunggu') {
+                        return Blade::render('<x-ui.badge variant="info">Menunggu penilaian</x-ui.badge>');
+                    }
+
+                    // Sumatif: hasil perangkat sudah masuk, poin menunggu guru.
+                    if ($row->status === 'menunggu_verifikasi') {
+                        return Blade::render('<x-ui.badge variant="netral">Menunggu verifikasi</x-ui.badge>');
+                    }
+
+                    if ($row->status === 'galat') {
+                        return Blade::render('<x-ui.badge variant="bahaya">Galat</x-ui.badge>');
+                    }
+
+                    if ($row->status === 'waktu_habis') {
+                        return Blade::render('<x-ui.badge variant="peringatan">Waktu habis</x-ui.badge>');
+                    }
+
+                    return Blade::render(
+                        '<x-ui.badge :variant="$variant">{{ $label }}</x-ui.badge>',
+                        [
+                            'variant' => $row->all_passed ? 'sukses' : 'peringatan',
+                            'label' => $row->all_passed ? 'Semua lulus' : 'Sebagian gagal',
+                        ],
+                    );
+                },
             ],
             [
                 'key' => 'aksi',

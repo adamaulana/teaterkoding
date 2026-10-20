@@ -3,16 +3,21 @@
 namespace App\Console\Commands;
 
 use App\Models\BugAttempt;
+use App\Models\BugAttemptResult;
+use App\Models\ClassLevelAccess;
+use App\Models\CodeDraft;
 use App\Models\FunctionOwnership;
 use App\Models\GradingSetting;
 use App\Models\ManualScore;
 use App\Models\MissionPlan;
 use App\Models\MissionPlanConcept;
+use App\Models\Reflection;
 use App\Models\RoleAssignment;
 use App\Models\SchoolClass;
 use App\Models\ScoreEntry;
 use App\Models\Student;
 use App\Models\Submission;
+use App\Models\SubmissionPart;
 use App\Models\SubmissionResult;
 use App\Models\Team;
 use App\Models\TeamMember;
@@ -56,21 +61,32 @@ class HapusDemo extends Command
         $teamIds = Team::query()->whereIn('class_id', $classIds)->pluck('team_id')->all();
         $studentIds = Student::query()->whereIn('class_id', $classIds)->pluck('student_id')->all();
         $submissionIds = Submission::query()->whereIn('team_id', $teamIds)->pluck('submission_id')->all();
+        $bugAttemptIds = BugAttempt::query()->whereIn('team_id', $teamIds)->pluck('attempt_id')->all();
 
-        DB::transaction(function () use ($classIds, $teamIds, $studentIds, $submissionIds): void {
-            // 1. Hasil kasus uji menempel pada submission.
+        DB::transaction(function () use ($classIds, $teamIds, $studentIds, $submissionIds, $bugAttemptIds): void {
+            // 1. Hasil & potongan kode yang menempel pada submission.
             if ($submissionIds !== []) {
                 SubmissionResult::query()->whereIn('submission_id', $submissionIds)->delete();
+                SubmissionPart::query()->whereIn('submission_id', $submissionIds)->delete();
             }
 
-            // 2. Ledger skor & nilai manual (per tim dan per siswa).
+            // 2. Hasil kasus uji bug (sebelum percobaan bug itu sendiri dihapus).
+            if ($bugAttemptIds !== []) {
+                BugAttemptResult::query()->whereIn('attempt_id', $bugAttemptIds)->delete();
+            }
+
+            // 3. Ledger skor & nilai manual (per tim dan per siswa).
             ScoreEntry::query()->whereIn('team_id', $teamIds)->delete();
             ManualScore::query()->whereIn('student_id', $studentIds)->delete();
 
-            // 3. Aktivitas permainan.
+            // 4. Aktivitas permainan.
             BugAttempt::query()->whereIn('team_id', $teamIds)->delete();
             FunctionOwnership::query()->whereIn('team_id', $teamIds)->delete();
             RoleAssignment::query()->whereIn('team_id', $teamIds)->delete();
+
+            // 5. Draf kode & refleksi (menempel pada tim dan siswa).
+            CodeDraft::query()->whereIn('team_id', $teamIds)->delete();
+            Reflection::query()->whereIn('team_id', $teamIds)->delete();
 
             // Pivot rencana → kartu konsep harus dihapus sebelum rencananya.
             MissionPlanConcept::query()
@@ -80,10 +96,11 @@ class HapusDemo extends Command
             MissionPlan::query()->whereIn('team_id', $teamIds)->delete();
             Submission::query()->whereIn('team_id', $teamIds)->delete();
 
-            // 4. Bobot penilaian kelas demo.
+            // 6. Bobot penilaian & akses level kelas demo.
             GradingSetting::query()->whereIn('class_id', $classIds)->delete();
+            ClassLevelAccess::query()->whereIn('class_id', $classIds)->delete();
 
-            // 5. Struktur akademik.
+            // 7. Struktur akademik.
             TeamMember::query()->whereIn('team_id', $teamIds)->delete();
             Team::query()->whereIn('class_id', $classIds)->delete();
             Student::query()->whereIn('class_id', $classIds)->delete();

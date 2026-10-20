@@ -40,6 +40,7 @@ return [
             'items' => [
                 ['label' => 'Pantau Live', 'icon' => 'broadcast', 'route' => 'admin.pantau-live'],
                 ['label' => 'Riwayat Submission', 'icon' => 'history', 'route' => 'admin.riwayat-submission'],
+                ['label' => 'Kontrol Kelas', 'icon' => 'lock', 'route' => 'admin.kontrol-kelas'],
             ],
         ],
         [
@@ -47,6 +48,7 @@ return [
             'items' => [
                 ['label' => 'Skor & Peringkat', 'icon' => 'trophy', 'route' => 'admin.skor-peringkat'],
                 ['label' => 'Rekap Nilai Sumatif', 'icon' => 'clipboard-list', 'route' => 'admin.rekap-nilai'],
+                ['label' => 'Verifikasi Penilaian', 'icon' => 'shield-check', 'route' => 'admin.verifikasi-penilaian', 'badge' => 'verifikasi'],
             ],
         ],
         [

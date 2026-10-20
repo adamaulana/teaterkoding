@@ -225,7 +225,28 @@ class extends Component
         $this->suntingCatatan = (string) ($manual?->notes ?? '');
         $this->resetValidation();
 
+        unset($this->catatanSiswa);
+
         $this->dispatch('modal-nilai-open');
+    }
+
+    /**
+     * Catatan & refleksi siswa terpilih pada misi sumatif ini (untuk rubrik guru).
+     *
+     * @return Collection<int, \App\Models\Reflection>
+     */
+    #[Computed]
+    public function catatanSiswa(): Collection
+    {
+        if ($this->suntingStudentId === null || $this->misiId === null) {
+            return collect();
+        }
+
+        return \App\Models\Reflection::query()
+            ->where('student_id', $this->suntingStudentId)
+            ->where('mission_id', $this->misiId)
+            ->orderBy('type')
+            ->get();
     }
 
     /**
@@ -502,6 +523,26 @@ class extends Component
                 Komponen refleksi/rubrik dan observasi diisi guru. Keduanya 0–100; biarkan kosong
                 bila belum dinilai — baris akan tetap berstatus "Sementara".
             </x-ui.alert>
+
+            {{-- Catatan & refleksi siswa, untuk membantu guru mengisi rubrik --}}
+            @if ($this->catatanSiswa->isNotEmpty())
+                <div class="rounded-lg border border-line bg-page/50 p-3">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Catatan & Refleksi Siswa</p>
+                    <ul class="mt-2 space-y-2">
+                        @foreach ($this->catatanSiswa as $catatan)
+                            <li class="rounded-lg border border-line bg-white p-2.5">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-medium text-slate-700">
+                                        {{ \App\Models\Reflection::jenis()[$catatan->type]['label'] ?? $catatan->type }}
+                                    </span>
+                                    <span class="text-[11px] text-slate-400">{{ $catatan->updated_at?->format('d/m H:i') }}</span>
+                                </div>
+                                <p class="mt-1 whitespace-pre-line text-xs text-slate-600">{{ $catatan->body }}</p>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <x-ui.input
                 label="Nilai Refleksi/Rubrik (0–100)"

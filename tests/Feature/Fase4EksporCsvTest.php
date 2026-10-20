@@ -138,6 +138,9 @@ test('ekspor rekap nilai menandai sementara setelah tim submit', function () {
         'code_text' => 'print(1)',
         'submitted_at' => Carbon::now(),
         'all_passed' => true,
+        // Rekap sumatif hanya memakai submission FINAL ('dinilai'); status
+        // 'menunggu_verifikasi' sengaja diabaikan sampai guru memverifikasi.
+        'status' => Submission::STATUS_DINILAI,
     ]);
 
     SubmissionResult::create([

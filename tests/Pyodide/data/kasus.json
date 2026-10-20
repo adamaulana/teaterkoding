@@ -1,0 +1,523 @@
+{
+    "dibuat_pada": "2026-10-17T23:12:42+07:00",
+    "misi": [
+        {
+            "kode": "KOP-L1-BUDI",
+            "mission_id": 6,
+            "starter_code": "# Buku Tabungan Budi\n# Saldo awal Pak Budi\nsaldo_awal = 2_500_000\n\n# Tiga kali setoran bulan ini\nsetoran_1 = 500_000\nsetoran_2 = 750_000\nsetoran_3 = 250_000\n\n# Bunga 0,5% dan penarikan tunai\npersen_bunga = 0.5\npenarikan = 1_250_000\n\n# Hitung dan simpan hasilnya pada variabel berikut:\n# total_setoran = ...\n# bunga = ...\n# saldo_akhir = ...\n# lembar = ...\n# sisa = ...",
+            "kasus": [
+                {
+                    "id": 26,
+                    "label": "Total setoran",
+                    "setup_code": "",
+                    "check_target": "total_setoran",
+                    "expected_value": "1500000",
+                    "tolerance": 0
+                },
+                {
+                    "id": 27,
+                    "label": "Bunga bulan ini",
+                    "setup_code": "",
+                    "check_target": "bunga",
+                    "expected_value": "20000.0",
+                    "tolerance": 0
+                },
+                {
+                    "id": 28,
+                    "label": "Saldo akhir",
+                    "setup_code": "",
+                    "check_target": "saldo_akhir",
+                    "expected_value": "4020000.0",
+                    "tolerance": 0
+                },
+                {
+                    "id": 29,
+                    "label": "Jumlah lembar 100rb",
+                    "setup_code": "",
+                    "check_target": "lembar",
+                    "expected_value": "12",
+                    "tolerance": 0
+                },
+                {
+                    "id": 30,
+                    "label": "Sisa pecahan lain",
+                    "setup_code": "",
+                    "check_target": "sisa",
+                    "expected_value": "50000",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "kode": "KOP-L2-STATUS",
+            "mission_id": 7,
+            "starter_code": "# Saat pengujian, sistem MENYEDIAKAN variabel `saldo` untuk kodemu.\n# Kamu tidak perlu menulis saldo = ... ; cukup pakai nilainya.\n#\n# Tentukan dua nilai berikut:\n#   status  -> \"Gold\", \"Silver\", \"Reguler\", atau \"Data tidak valid\"\n#   pinjaman -> \"Boleh\" atau \"Tidak\"\n#\n# Contoh: bila saldo >= 10_000_000 maka status = \"Gold\" dan pinjaman = \"Boleh\".\n\n# status = ...\n# pinjaman = ...",
+            "kasus": [
+                {
+                    "id": 31,
+                    "label": "Saldo 12 juta",
+                    "setup_code": "saldo = 12000000",
+                    "check_target": "status",
+                    "expected_value": "\"Gold\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 32,
+                    "label": "Pinjaman 12 juta",
+                    "setup_code": "saldo = 12000000",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Boleh\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 33,
+                    "label": "Saldo 10 juta",
+                    "setup_code": "saldo = 10000000",
+                    "check_target": "status",
+                    "expected_value": "\"Gold\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 34,
+                    "label": "Pinjaman 10 juta",
+                    "setup_code": "saldo = 10000000",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Boleh\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 35,
+                    "label": "Saldo 9.999.999",
+                    "setup_code": "saldo = 9999999",
+                    "check_target": "status",
+                    "expected_value": "\"Silver\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 36,
+                    "label": "Pinjaman 9.999.999",
+                    "setup_code": "saldo = 9999999",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Boleh\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 37,
+                    "label": "Saldo 7,5 juta",
+                    "setup_code": "saldo = 7500000",
+                    "check_target": "status",
+                    "expected_value": "\"Silver\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 38,
+                    "label": "Pinjaman 7,5 juta",
+                    "setup_code": "saldo = 7500000",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Boleh\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 39,
+                    "label": "Saldo 5 juta",
+                    "setup_code": "saldo = 5000000",
+                    "check_target": "status",
+                    "expected_value": "\"Silver\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 40,
+                    "label": "Pinjaman 5 juta",
+                    "setup_code": "saldo = 5000000",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Boleh\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 41,
+                    "label": "Saldo 4.999.999",
+                    "setup_code": "saldo = 4999999",
+                    "check_target": "status",
+                    "expected_value": "\"Reguler\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 42,
+                    "label": "Pinjaman 4.999.999",
+                    "setup_code": "saldo = 4999999",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Tidak\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 43,
+                    "label": "Saldo 0",
+                    "setup_code": "saldo = 0",
+                    "check_target": "status",
+                    "expected_value": "\"Reguler\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 44,
+                    "label": "Pinjaman 0",
+                    "setup_code": "saldo = 0",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Tidak\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 45,
+                    "label": "Saldo negatif",
+                    "setup_code": "saldo = -1",
+                    "check_target": "status",
+                    "expected_value": "\"Data tidak valid\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 46,
+                    "label": "Pinjaman saldo negatif",
+                    "setup_code": "saldo = -1",
+                    "check_target": "pinjaman",
+                    "expected_value": "\"Tidak\"",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "kode": "KOP-L3-LOOP",
+            "mission_id": 8,
+            "starter_code": "# Simulasi tabungan 12 bulan\nsaldo_awal = 1_000_000\nsetoran_bulanan = 300_000\npersen_bunga = 0.5\njumlah_bulan = 12\n\n# Daftar saldo lima nasabah\ndaftar_saldo = [12_000_000, 6_500_000, 3_000_000, 9_999_999, 5_000_000]\n\n# Hitung dan simpan hasilnya pada variabel berikut:\n# saldo_tabungan = ...   (saldo setelah 12 bulan, toleransi ±1)\n# total_saldo = ...\n# jumlah_gold = ...\n# jumlah_silver = ...\n# jumlah_reguler = ...",
+            "kasus": [
+                {
+                    "id": 47,
+                    "label": "Saldo tabungan 12 bulan",
+                    "setup_code": "",
+                    "check_target": "saldo_tabungan",
+                    "expected_value": "4780850",
+                    "tolerance": 1
+                },
+                {
+                    "id": 48,
+                    "label": "Total saldo nasabah",
+                    "setup_code": "",
+                    "check_target": "total_saldo",
+                    "expected_value": "36499999",
+                    "tolerance": 0
+                },
+                {
+                    "id": 49,
+                    "label": "Jumlah Gold",
+                    "setup_code": "",
+                    "check_target": "jumlah_gold",
+                    "expected_value": "1",
+                    "tolerance": 0
+                },
+                {
+                    "id": 50,
+                    "label": "Jumlah Silver",
+                    "setup_code": "",
+                    "check_target": "jumlah_silver",
+                    "expected_value": "3",
+                    "tolerance": 0
+                },
+                {
+                    "id": 51,
+                    "label": "Jumlah Reguler",
+                    "setup_code": "",
+                    "check_target": "jumlah_reguler",
+                    "expected_value": "1",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "kode": "KOP-L4-KASIR",
+            "mission_id": 9,
+            "starter_code": "# Program Utama: jalankan seluruh fungsi untuk daftar nasabah.\ndaftar_saldo = [12_000_000, 6_500_000, 3_000_000, 9_999_999, 5_000_000]\n\n# print(\"Gold:\", hitung_jumlah(daftar_saldo, \"Gold\"))\n# print(\"Silver:\", hitung_jumlah(daftar_saldo, \"Silver\"))\n# print(\"Reguler:\", hitung_jumlah(daftar_saldo, \"Reguler\"))\n\n# === FUNGSI: hitung_bunga ===\ndef hitung_bunga(saldo, persen):\n    pass\n\n# === FUNGSI: cek_status ===\ndef cek_status(saldo):\n    pass\n\n# === FUNGSI: boleh_pinjam ===\ndef boleh_pinjam(saldo):\n    pass\n\n# === FUNGSI: hitung_jumlah ===\ndef hitung_jumlah(daftar_saldo, status):\n    pass\n\n# === FUNGSI: simulasi_tabungan ===\ndef simulasi_tabungan(saldo_awal, setoran_bulanan, bulan, persen_bunga):\n    pass",
+            "kasus": [
+                {
+                    "id": 52,
+                    "label": "Bunga 4 juta 0,5%",
+                    "setup_code": "",
+                    "check_target": "hitung_bunga(4000000, 0.5)",
+                    "expected_value": "20000.0",
+                    "tolerance": 0
+                },
+                {
+                    "id": 53,
+                    "label": "Bunga 10 juta 1%",
+                    "setup_code": "",
+                    "check_target": "hitung_bunga(10000000, 1)",
+                    "expected_value": "100000.0",
+                    "tolerance": 0
+                },
+                {
+                    "id": 54,
+                    "label": "Status 10 juta",
+                    "setup_code": "",
+                    "check_target": "cek_status(10000000)",
+                    "expected_value": "\"Gold\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 55,
+                    "label": "Status 5 juta",
+                    "setup_code": "",
+                    "check_target": "cek_status(5000000)",
+                    "expected_value": "\"Silver\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 56,
+                    "label": "Status 4.999.999",
+                    "setup_code": "",
+                    "check_target": "cek_status(4999999)",
+                    "expected_value": "\"Reguler\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 57,
+                    "label": "Status negatif",
+                    "setup_code": "",
+                    "check_target": "cek_status(-1)",
+                    "expected_value": "\"Data tidak valid\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 58,
+                    "label": "Boleh pinjam 7,5 juta",
+                    "setup_code": "",
+                    "check_target": "boleh_pinjam(7500000)",
+                    "expected_value": "True",
+                    "tolerance": 0
+                },
+                {
+                    "id": 59,
+                    "label": "Tidak boleh pinjam 3 juta",
+                    "setup_code": "",
+                    "check_target": "boleh_pinjam(3000000)",
+                    "expected_value": "False",
+                    "tolerance": 0
+                },
+                {
+                    "id": 60,
+                    "label": "Jumlah Silver",
+                    "setup_code": "",
+                    "check_target": "hitung_jumlah([12000000, 6500000, 3000000, 9999999, 5000000], \"Silver\")",
+                    "expected_value": "3",
+                    "tolerance": 0
+                },
+                {
+                    "id": 61,
+                    "label": "Jumlah Gold daftar kosong",
+                    "setup_code": "",
+                    "check_target": "hitung_jumlah([], \"Gold\")",
+                    "expected_value": "0",
+                    "tolerance": 0
+                },
+                {
+                    "id": 62,
+                    "label": "Simulasi 12 bulan",
+                    "setup_code": "",
+                    "check_target": "simulasi_tabungan(1000000, 300000, 12, 0.5)",
+                    "expected_value": "4780850",
+                    "tolerance": 1
+                },
+                {
+                    "id": 63,
+                    "label": "Simulasi nol bulan",
+                    "setup_code": "",
+                    "check_target": "simulasi_tabungan(1000000, 0, 0, 0.5)",
+                    "expected_value": "1000000",
+                    "tolerance": 0
+                },
+                {
+                    "id": 64,
+                    "label": "Simulasi 6 bulan",
+                    "setup_code": "",
+                    "check_target": "simulasi_tabungan(2000000, 500000, 6, 0.5)",
+                    "expected_value": "5113695",
+                    "tolerance": 1
+                }
+            ]
+        }
+    ],
+    "bug": [
+        {
+            "id": 9,
+            "level_number": 1,
+            "judul": "Saldo yang Berupa Teks",
+            "buggy_code": "saldo = \"2500000\"\nbunga = saldo * 0.005\nprint(bunga)",
+            "fix_explanation": "Data saldo berbentuk string. Perbaikan: saldo = 2500000 atau saldo = int(\"2500000\").",
+            "kasus": [
+                {
+                    "id": 1,
+                    "label": "Bunga dari saldo",
+                    "setup_code": "",
+                    "check_target": "bunga",
+                    "expected_value": "12500.0",
+                    "tolerance": 0.01
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "level_number": 1,
+            "judul": "Pecahan Tertukar",
+            "buggy_code": "penarikan = 1_250_000\nlembar = penarikan % 100_000\nsisa = penarikan // 100_000\nprint(lembar, sisa)",
+            "fix_explanation": "Tukar % dan //: lembar = penarikan // 100_000, sisa = penarikan % 100_000.",
+            "kasus": [
+                {
+                    "id": 2,
+                    "label": "Jumlah lembar",
+                    "setup_code": "",
+                    "check_target": "lembar",
+                    "expected_value": "12",
+                    "tolerance": 0
+                },
+                {
+                    "id": 3,
+                    "label": "Sisa penarikan",
+                    "setup_code": "",
+                    "check_target": "sisa",
+                    "expected_value": "50000",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "id": 11,
+            "level_number": 2,
+            "judul": "Gold yang Tak Pernah Muncul",
+            "buggy_code": "def status(saldo):\n    if saldo >= 5_000_000:\n        return \"Silver\"\n    elif saldo >= 10_000_000:\n        return \"Gold\"\n    else:\n        return \"Reguler\"\n\nprint(status(12_000_000))",
+            "fix_explanation": "Urutan kondisi harus dari yang paling sempit ke yang paling luas: cek >= 10_000_000 (Gold) dulu, baru >= 5_000_000 (Silver).",
+            "kasus": [
+                {
+                    "id": 4,
+                    "label": "Gold 12 juta",
+                    "setup_code": "",
+                    "check_target": "status(12000000)",
+                    "expected_value": "\"Gold\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 5,
+                    "label": "Silver 7 juta",
+                    "setup_code": "",
+                    "check_target": "status(7000000)",
+                    "expected_value": "\"Silver\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 6,
+                    "label": "Reguler 1 juta",
+                    "setup_code": "",
+                    "check_target": "status(1000000)",
+                    "expected_value": "\"Reguler\"",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "id": 12,
+            "level_number": 2,
+            "judul": "Batas yang Meleset",
+            "buggy_code": "def status(saldo):\n    if saldo > 10_000_000:\n        return \"Gold\"\n    elif saldo > 5_000_000:\n        return \"Silver\"\n    else:\n        return \"Reguler\"\n\nprint(status(10_000_000), status(5_000_000))",
+            "fix_explanation": "Ganti > dengan >= di kedua kondisi.",
+            "kasus": [
+                {
+                    "id": 7,
+                    "label": "Gold tepat 10 juta",
+                    "setup_code": "",
+                    "check_target": "status(10000000)",
+                    "expected_value": "\"Gold\"",
+                    "tolerance": 0
+                },
+                {
+                    "id": 8,
+                    "label": "Silver tepat 5 juta",
+                    "setup_code": "",
+                    "check_target": "status(5000000)",
+                    "expected_value": "\"Silver\"",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "id": 13,
+            "level_number": 3,
+            "judul": "Total yang Selalu Ulang dari Nol",
+            "buggy_code": "daftar = [12_000_000, 6_500_000, 3_000_000]\nfor saldo in daftar:\n    total = 0\n    total += saldo\nprint(total)",
+            "fix_explanation": "Pindahkan total = 0 ke sebelum baris for.",
+            "kasus": [
+                {
+                    "id": 9,
+                    "label": "Total saldo",
+                    "setup_code": "",
+                    "check_target": "total",
+                    "expected_value": "21500000",
+                    "tolerance": 0
+                }
+            ]
+        },
+        {
+            "id": 14,
+            "level_number": 3,
+            "judul": "Bulan yang Tak Pernah Berganti",
+            "buggy_code": "saldo = 1_000_000\nbulan = 1\nwhile bulan <= 12:\n    saldo += 300_000\n    saldo += saldo * 0.005\nprint(saldo)",
+            "fix_explanation": "Tambahkan bulan += 1 di dalam loop (atau ganti dengan for _ in range(12):).",
+            "kasus": [
+                {
+                    "id": 10,
+                    "label": "Saldo setelah 12 bulan",
+                    "setup_code": "",
+                    "check_target": "saldo",
+                    "expected_value": "4780850",
+                    "tolerance": 1
+                }
+            ]
+        },
+        {
+            "id": 15,
+            "level_number": 4,
+            "judul": "Fungsi yang Hanya Bicara",
+            "buggy_code": "def hitung_bunga(saldo, persen):\n    print(saldo * persen / 100)\n\nsaldo_akhir = 4_000_000 + hitung_bunga(4_000_000, 0.5)\nprint(saldo_akhir)",
+            "fix_explanation": "Ganti print(...) dengan return ....",
+            "kasus": [
+                {
+                    "id": 11,
+                    "label": "Bunga 0,5 persen",
+                    "setup_code": "",
+                    "check_target": "hitung_bunga(4000000, 0.5)",
+                    "expected_value": "20000.0",
+                    "tolerance": 0.01
+                },
+                {
+                    "id": 12,
+                    "label": "Saldo akhir",
+                    "setup_code": "",
+                    "check_target": "saldo_akhir",
+                    "expected_value": "4020000.0",
+                    "tolerance": 0.01
+                }
+            ]
+        },
+        {
+            "id": 16,
+            "level_number": 4,
+            "judul": "Return yang Terlalu Cepat",
+            "buggy_code": "def jumlah_gold(daftar_saldo):\n    n = 0\n    for s in daftar_saldo:\n        if s >= 10_000_000:\n            n += 1\n        return n\n\nprint(jumlah_gold([3_000_000, 12_000_000, 15_000_000]))",
+            "fix_explanation": "Geser return n keluar dari loop (sejajar dengan for).",
+            "kasus": [
+                {
+                    "id": 13,
+                    "label": "Jumlah Gold",
+                    "setup_code": "",
+                    "check_target": "jumlah_gold([3000000, 12000000, 15000000])",
+                    "expected_value": "2",
+                    "tolerance": 0
+                }
+            ]
+        }
+    ]
+}

@@ -5,6 +5,7 @@ use App\Concerns\InteractsWithTable;
 use App\Livewire\Forms\SiswaForm;
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Services\AccessCodeService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,8 @@ class extends Component
     public ?int $kelasId = null;
 
     public ?int $siswaId = null;
+
+    public ?int $kodeUlangId = null;
 
     public string $pesanKonfirmasi = '';
 
@@ -161,6 +164,19 @@ class extends Component
                 },
             ],
             [
+                'key' => 'akses',
+                'label' => 'Kode Akses',
+                'format' => function (Student $student) {
+                    if ($student->access_code === null) {
+                        return Blade::render('<x-ui.badge variant="netral">Belum ada kode</x-ui.badge>');
+                    }
+
+                    $kode = app(AccessCodeService::class)->display($student->access_code);
+
+                    return Blade::render('<span class="font-mono text-sm font-semibold tracking-widest text-slate-700">{{ $k }}</span>', ['k' => $kode]);
+                },
+            ],
+            [
                 'key' => 'aksi',
                 'label' => 'Aksi',
                 'class' => 'w-24 text-end',
@@ -172,6 +188,10 @@ class extends Component
                             </button>
                         </x-slot:trigger>
 
+                        <button type="button" wire:click="mintaBuatUlang({{ $id }})" class="flex w-full items-center gap-2.5 px-4 py-2 text-start text-sm text-slate-600 transition hover:bg-primary-50 hover:text-primary-700">
+                            <x-ui.icon.key class="size-4 text-slate-400" />
+                            {{ $kode ? 'Buat Ulang Kode Akses' : 'Buat Kode Akses' }}
+                        </button>
                         <button type="button" wire:click="bukaUbah({{ $id }})" class="flex w-full items-center gap-2.5 px-4 py-2 text-start text-sm text-slate-600 transition hover:bg-primary-50 hover:text-primary-700">
                             <x-ui.icon.pencil class="size-4 text-slate-400" />
                             Ubah
@@ -181,7 +201,7 @@ class extends Component
                             Hapus
                         </button>
                     </x-ui.dropdown>
-                    BLADE, ['id' => $student->student_id]),
+                    BLADE, ['id' => $student->student_id, 'kode' => $student->access_code !== null]),
             ],
         ];
     }
@@ -298,6 +318,83 @@ class extends Component
         $this->dispatch('toast', type: 'sukses', message: 'Siswa berhasil dihapus.');
     }
 
+// ---------- Kode Akses ----------
+
+    /**
+     * Buat kode akses untuk SEMUA siswa kelas terpilih yang belum punya kode.
+     */
+    public function buatKodeKelas(): void
+    {
+        if ($this->kelasId === null) {
+            $this->dispatch('toast', type: 'peringatan', message: 'Pilih kelas terlebih dahulu.');
+
+            return;
+        }
+
+        $kelas = $this->pastikanBolehLihatKelas($this->kelasId);
+
+        $servis = app(AccessCodeService::class);
+        $jumlah = 0;
+
+        Student::query()
+            ->where('class_id', $kelas->class_id)
+            ->whereNull('access_code')
+            ->get()
+            ->each(function (Student $siswa) use ($servis, &$jumlah) {
+                $siswa->forceFill([
+                    'access_code' => $this->kodeUnik($servis),
+                    'access_code_generated_at' => now(),
+                ])->save();
+                $jumlah++;
+            });
+
+        unset($this->rows);
+
+        $this->dispatch('toast', type: 'sukses', message: $jumlah === 0 ? 'Semua siswa sudah punya kode akses.' : "{$jumlah} kode akses berhasil dibuat.");
+    }
+
+    public function mintaBuatUlang(int $studentId): void
+    {
+        $siswa = Student::findOrFail($studentId);
+
+        $this->pastikanBolehLihatKelas($siswa->class_id);
+
+        $this->kodeUlangId = $studentId;
+
+        $this->dispatch('konfirmasi-kode-buka');
+    }
+
+    public function buatUlangKode(): void
+    {
+        if ($this->kodeUlangId === null) {
+            return;
+        }
+
+        $siswa = Student::findOrFail($this->kodeUlangId);
+
+        $this->pastikanBolehLihatKelas($siswa->class_id);
+
+        $servis = app(AccessCodeService::class);
+
+        $siswa->forceFill([
+            'access_code' => $this->kodeUnik($servis),
+            'access_code_generated_at' => now(),
+        ])->save();
+
+        $this->kodeUlangId = null;
+        unset($this->rows);
+
+        $this->dispatch('toast', type: 'sukses', message: 'Kode akses dibuat ulang.');
+    }
+
+    private function kodeUnik(AccessCodeService $servis): string
+    {
+        do {
+            $kode = $servis->generate();
+        } while (Student::query()->where('access_code', $kode)->exists());
+
+        return $kode;
+    }
     /**
      * Nama relasi yang menghalangi penghapusan (pesan ramah, bukan error FK).
      *
@@ -452,9 +549,17 @@ class extends Component
 <div>
     <x-ui.page-header title="Siswa" description="Kelola data siswa, pilih kelas, dan impor massal dari berkas CSV.">
         <x-slot:actions>
+            <a href="{{ route('admin.kartu-akses') }}" wire:navigate class="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-page">
+                <x-ui.icon.cards class="size-4" />
+                Cetak Kartu Akses
+            </a>
             <x-ui.button variant="outline" wire:click="bukaImpor" @disabled(! $this->bolehUbah)>
                 <x-ui.icon.download class="size-4" />
                 Impor CSV
+            </x-ui.button>
+            <x-ui.button variant="outline" wire:click="buatKodeKelas" @disabled(! $this->bolehUbah)>
+                <x-ui.icon.key class="size-4" />
+                Buat Kode Akses
             </x-ui.button>
             <x-ui.button variant="primary" wire:click="bukaTambah" @disabled(! $this->bolehUbah)>
                 <x-ui.icon.plus class="size-4" />
@@ -620,6 +725,14 @@ class extends Component
         title="Hapus Siswa"
         property="pesanKonfirmasi"
         confirm-label="Ya, hapus"
+    />
+
+    <x-ui.confirm-dialog
+        action="buatUlangKode"
+        event="konfirmasi-kode-buka"
+        title="Buat Ulang Kode Akses"
+        message="Buat ulang kode akses siswa ini? Kode lama tidak akan berlaku lagi."
+        confirm-label="Ya, buat ulang"
     />
 </div>
 

@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\ValidasiKasusUji;
 use App\Concerns\InteractsWithTable;
 use App\Livewire\Forms\KartuBugForm;
 use App\Models\BugCard;
+use App\Models\BugTestCase;
 use App\Models\Level;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
@@ -28,6 +30,23 @@ class extends Component
 
     /** Apakah kunci perbaikan ditampilkan pada pratinjau. */
     public bool $tampilkanKunci = false;
+
+    // ---- Kasus Uji Bug ----
+    public ?int $kasusBugId = null;
+
+    public ?int $kasusBugEditId = null;
+
+    public string $kasusLabel = '';
+
+    public string $kasusSetup = '';
+
+    public string $kasusTarget = '';
+
+    public string $kasusExpected = '';
+
+    public string $kasusTolerance = '';
+
+    public string $pesanHapusKasus = '';
 
     private const SORTABLE = ['bug_title', 'level_id', 'points', 'bug_attempts_count'];
 
@@ -118,6 +137,10 @@ class extends Component
                             </button>
                         </x-slot:trigger>
 
+                        <button type="button" wire:click="bukaKasus({{ $id }})" class="flex w-full items-center gap-2.5 px-4 py-2 text-start text-sm text-slate-600 transition hover:bg-primary-50 hover:text-primary-700">
+                            <x-ui.icon.target class="size-4 text-slate-400" />
+                            Kasus Uji Bug
+                        </button>
                         <button type="button" wire:click="bukaUbah({{ $id }})" class="flex w-full items-center gap-2.5 px-4 py-2 text-start text-sm text-slate-600 transition hover:bg-primary-50 hover:text-primary-700">
                             <x-ui.icon.pencil class="size-4 text-slate-400" />
                             Ubah
@@ -173,6 +196,7 @@ class extends Component
             BugCard::create([
                 'level_id' => $data['level_id'],
                 'bug_title' => $data['bug_title'],
+                'symptom_text' => $data['symptom_text'] ?? null,
                 'buggy_code' => $data['buggy_code'],
                 'hint_text' => $data['hint_text'] ?? null,
                 'fix_explanation' => $data['fix_explanation'],
@@ -188,6 +212,7 @@ class extends Component
             $bug->fill([
                 'level_id' => $data['level_id'],
                 'bug_title' => $data['bug_title'],
+                'symptom_text' => $data['symptom_text'] ?? null,
                 'buggy_code' => $data['buggy_code'],
                 'hint_text' => $data['hint_text'] ?? null,
                 'fix_explanation' => $data['fix_explanation'],
@@ -247,6 +272,143 @@ class extends Component
 
         $this->dispatch('toast', type: 'sukses', message: 'Kartu bug berhasil dihapus.');
     }
+
+    // ---------- Kasus Uji Bug (aturan validasi sama dengan Fase 3) ----------
+
+    #[Computed]
+    public function kasusBugTerpilih(): \Illuminate\Support\Collection
+    {
+        if ($this->kasusBugId === null) {
+            return collect();
+        }
+
+        return BugTestCase::query()
+            ->where('bug_id', $this->kasusBugId)
+            ->orderBy('id')
+            ->get();
+    }
+
+    #[Computed]
+    public function bugKasusTerpilih(): ?BugCard
+    {
+        return $this->kasusBugId !== null ? BugCard::find($this->kasusBugId) : null;
+    }
+
+    public function bukaKasus(int $bugId): void
+    {
+        $bug = BugCard::findOrFail($bugId);
+
+        $this->authorize('update', $bug);
+
+        $this->kasusBugId = $bugId;
+        $this->kasusBugEditId = null;
+        $this->resetKasus();
+
+        $this->dispatch('modal-kasus-bug-open');
+    }
+
+    public function bukaTambahKasusBug(): void
+    {
+        $this->kasusBugEditId = null;
+        $this->resetKasus();
+        $this->resetValidation();
+    }
+
+    public function bukaUbahKasusBug(int $id): void
+    {
+        $kasus = BugTestCase::findOrFail($id);
+
+        $this->kasusBugEditId = $id;
+        $this->kasusLabel = $kasus->label;
+        $this->kasusSetup = (string) ($kasus->setup_code ?? '');
+        $this->kasusTarget = $kasus->check_target;
+        $this->kasusExpected = $kasus->expected_value;
+        $this->kasusTolerance = $kasus->tolerance === null ? '' : (string) $kasus->tolerance;
+
+        $this->resetValidation();
+    }
+
+    public function simpanKasusBug(): void
+    {
+        $this->validate([
+            'kasusLabel' => ['required', 'string', 'max:100'],
+            'kasusSetup' => ['nullable', 'string', 'max:200'],
+            'kasusTarget' => ['required', 'string', 'max:100'],
+            'kasusExpected' => ['required', 'string', 'max:100'],
+            'kasusTolerance' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        // Pakai ULANG aturan validasi Fase 3 (tidak menduplikasi logika).
+        $validator = new ValidasiKasusUji;
+        $pesan = $validator->periksa([
+            'label' => $this->kasusLabel,
+            'setup_code' => $this->kasusSetup,
+            'check_target' => $this->kasusTarget,
+            'expected_value' => $this->kasusExpected,
+            'tolerance' => $this->kasusTolerance === '' ? 0 : $this->kasusTolerance,
+        ]);
+
+        if ($pesan !== null) {
+            $this->addError('kasusTarget', $pesan);
+
+            return;
+        }
+
+        $data = [
+            'bug_id' => $this->kasusBugId,
+            'label' => $this->kasusLabel,
+            'setup_code' => $this->kasusSetup === '' ? null : $this->kasusSetup,
+            'check_target' => $this->kasusTarget,
+            'expected_value' => $this->kasusExpected,
+            'tolerance' => $this->kasusTolerance === '' ? 0 : $this->kasusTolerance,
+        ];
+
+        if ($this->kasusBugEditId === null) {
+            BugTestCase::create($data);
+        } else {
+            BugTestCase::findOrFail($this->kasusBugEditId)->update($data);
+        }
+
+        $this->kasusBugEditId = null;
+        $this->resetKasus();
+        $this->resetValidation();
+        unset($this->kasusBugTerpilih);
+
+        $this->dispatch('toast', type: 'sukses', message: 'Kasus uji bug disimpan.');
+    }
+
+    public function mintaHapusKasusBug(int $id): void
+    {
+        $kasus = BugTestCase::findOrFail($id);
+
+        $this->kasusBugEditId = $id;
+        $this->pesanHapusKasus = "Hapus kasus uji \"{$kasus->label}\"?";
+
+        $this->dispatch('konfirmasi-kasus-bug-buka');
+    }
+
+    public function hapusKasusBug(): void
+    {
+        if ($this->kasusBugEditId === null) {
+            return;
+        }
+
+        BugTestCase::findOrFail($this->kasusBugEditId)->delete();
+
+        $this->kasusBugEditId = null;
+        unset($this->kasusBugTerpilih);
+
+        $this->dispatch('toast', type: 'sukses', message: 'Kasus uji bug dihapus.');
+    }
+
+    private function resetKasus(): void
+    {
+        $this->kasusLabel = '';
+        $this->kasusSetup = '';
+        $this->kasusTarget = '';
+        $this->kasusExpected = '';
+        $this->kasusTolerance = '';
+    }
 }; ?>
 
 <div>
@@ -293,6 +455,15 @@ class extends Component
                 <x-ui.input label="Judul Bug" name="form.bug_title" wire:model="form.bug_title" placeholder="Contoh: Salah tanda kurang-lebih" required autofocus />
 
                 <x-ui.select label="Level" name="form.level_id" :options="$this->opsiLevel" wire:model="form.level_id" required />
+
+                <x-ui.textarea
+                    label="Gejala (yang dilihat siswa)"
+                    name="form.symptom_text"
+                    rows="3"
+                    wire:model="form.symptom_text"
+                    placeholder="Contoh: Output 50000 12, padahal seharusnya 12 lembar dan sisa 50.000."
+                    help="Ditampilkan ke siswa pada halaman Kartu Bug. Jangan bocorkan kunci perbaikan di sini."
+                />
 
                 <x-ui.textarea
                     label="Kode Bermasalah"
@@ -401,6 +572,87 @@ class extends Component
         action="hapusBug"
         title="Hapus Kartu Bug"
         property="pesanKonfirmasi"
+        confirm-label="Ya, hapus"
+    />
+
+    {{-- Modal Kasus Uji Bug (aturan validasi sama dengan Fase 3) --}}
+    <x-ui.modal name="modal-kasus-bug" title="Kasus Uji Bug">
+        @if ($this->bugKasusTerpilih !== null)
+            <p class="mb-3 text-sm text-slate-500">
+                Kartu: <span class="font-medium text-slate-700">{{ $this->bugKasusTerpilih->bug_title }}</span>
+            </p>
+        @endif
+
+        <div class="mb-4 flex justify-end">
+            <x-ui.button variant="outline" size="sm" wire:click="bukaTambahKasusBug">
+                <x-ui.icon.plus class="size-4" />
+                Tambah Kasus
+            </x-ui.button>
+        </div>
+
+        @if ($this->kasusBugTerpilih->isEmpty())
+            <p class="rounded-lg border border-line bg-page/60 px-3 py-6 text-center text-sm text-slate-400">
+                Belum ada kasus uji untuk kartu ini.
+            </p>
+        @else
+            <div class="mb-4 max-h-56 overflow-y-auto rounded-lg border border-line">
+                <table class="min-w-full divide-y divide-line text-xs">
+                    <thead class="bg-page/60">
+                        <tr>
+                            <th class="px-3 py-2 text-start font-semibold text-slate-500">Label</th>
+                            <th class="px-3 py-2 text-start font-semibold text-slate-500">Target</th>
+                            <th class="px-3 py-2 text-start font-semibold text-slate-500">Diharapkan</th>
+                            <th class="px-3 py-2 text-end font-semibold text-slate-500">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line bg-white">
+                        @foreach ($this->kasusBugTerpilih as $k)
+                            <tr>
+                                <td class="px-3 py-2 text-slate-700">{{ $k->label }}</td>
+                                <td class="px-3 py-2"><code class="rounded bg-sky-50 px-1.5 py-0.5 font-mono text-sky-700">{{ $k->check_target }}</code></td>
+                                <td class="px-3 py-2"><code class="rounded bg-primary-50 px-1.5 py-0.5 font-mono text-primary-700">{{ $k->expected_value }}</code></td>
+                                <td class="px-3 py-2 text-end">
+                                    <button type="button" wire:click="bukaUbahKasusBug({{ $k->id }})" class="rounded p-1 text-slate-400 hover:text-primary-700" title="Ubah">
+                                        <x-ui.icon.pencil class="size-3.5" />
+                                    </button>
+                                    <button type="button" wire:click="mintaHapusKasusBug({{ $k->id }})" class="rounded p-1 text-rose-400 hover:text-rose-600" title="Hapus">
+                                        <x-ui.icon.trash class="size-3.5" />
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
+        <form wire:submit="simpanKasusBug" class="space-y-3 border-t border-line pt-4">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                {{ $kasusBugEditId === null ? 'Tambah Kasus Uji' : 'Ubah Kasus Uji' }}
+            </p>
+
+            <x-ui.input label="Label" name="kasusLabel" wire:model="kasusLabel" placeholder="mis. Bunga 1 tahun" required />
+            <x-ui.input label="Input Awal (opsional)" name="kasusSetup" wire:model="kasusSetup" placeholder="mis. saldo = 4_000_000" help="Assignment sederhana; kosongkan bila tidak perlu." />
+            <x-ui.input label="Target" name="kasusTarget" wire:model="kasusTarget" placeholder="mis. hitung_bunga(4000000, 0.5) atau bunga" required />
+            <x-ui.input label="Diharapkan" name="kasusExpected" wire:model="kasusExpected" placeholder="mis. 20000.0" required />
+            <x-ui.input label="Toleransi" name="kasusTolerance" type="number" step="0.01" min="0" wire:model="kasusTolerance" placeholder="0" help="Hanya untuk nilai angka." />
+
+            @error('kasusTarget')
+                <p class="text-xs text-rose-600">{{ $message }}</p>
+            @enderror
+
+            <div class="flex justify-end gap-2 pt-2">
+                <x-ui.button variant="outline" type="button" x-on:click="$dispatch('modal-kasus-bug-close')">Tutup</x-ui.button>
+                <x-ui.button variant="primary" type="submit">Simpan Kasus</x-ui.button>
+            </div>
+        </form>
+    </x-ui.modal>
+
+    <x-ui.confirm-dialog
+        action="hapusKasusBug"
+        event="konfirmasi-kasus-bug-buka"
+        title="Hapus Kasus Uji Bug"
+        property="pesanHapusKasus"
         confirm-label="Ya, hapus"
     />
 </div>

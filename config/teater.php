@@ -151,17 +151,75 @@ return [
 
     /*
     | Penilai otomatis yang dipakai (kontrak App\Contracts\GradingRunner):
-    |   null → NullGradingRunner  (produksi: tidak menilai, status 'menunggu')
-    |   fake → FakeGradingRunner  (HANYA local/testing: menilai alur UI)
+    |   null    → NullGradingRunner  (tidak menilai, status 'menunggu')
+    |   fake    → FakeGradingRunner  (HANYA local/testing: menilai alur UI)
+    |   pyodide → penilaian di BROWSER siswa (lihat blok 'pyodide' di bawah)
     |
-    | Fase ini TIDAK mengeksekusi Python; sandbox Piston dipasang di tahap
-    | berikutnya lewat kontrak yang sama.
+    | PENTING: aplikasi ini TIDAK PERNAH menjalankan kode siswa di server.
+    | Runner 'pyodide' hanya menyiapkan paket penilaian + nonce; eksekusi
+    | terjadi di perangkat siswa, dan server tetap membandingkan dengan
+    | expected_value.
+    |
+    | Catatan: integrasi sandbox Piston/Docker DIBATALKAN (tidak berjalan di
+    | laptop Windows) dan tidak pernah dibuat di repo ini.
     */
     'runner' => env('TEATER_RUNNER', 'null'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fase 6 — Penilaian di browser dengan Pyodide
+    |--------------------------------------------------------------------------
+    */
+
+    'pyodide' => [
+        // Versi dikunci agar aset berversi & cache browser aman.
+        'version' => env('TEATER_PYODIDE_VERSION', '314.0.7'),
+
+        // Jalur aset publik (TANPA CDN). Diisi npm run vendor:pyodide.
+        'asset_path' => env('TEATER_PYODIDE_ASSET_PATH', '/vendor/pyodide'),
+
+        // Skrip penilai Python di sisi browser (disalin npm run vendor:pyodide).
+        'script_path' => env('TEATER_PYODIDE_SCRIPT_PATH', '/vendor/teater/penilai.py'),
+
+        // Batas waktu per kelompok setup_code (ms) dan total seluruh paket (ms).
+        'setup_timeout_ms' => (int) env('TEATER_PYODIDE_SETUP_TIMEOUT_MS', 3000),
+        'total_timeout_ms' => (int) env('TEATER_PYODIDE_TOTAL_TIMEOUT_MS', 15000),
+
+        // Verifikasi guru boleh lebih longgar (laptop guru bisa lebih lambat).
+        'verify_timeout_multiplier' => (int) env('TEATER_PYODIDE_VERIFY_MULTIPLIER', 2),
+
+        // Panjang keluaran (stdout) yang dikirim balik & disimpan.
+        'max_output_chars' => (int) env('TEATER_PYODIDE_MAX_OUTPUT', 2000),
+
+        // Modul yang diizinkan diimpor kode siswa (AST memeriksa ini).
+        'allowed_modules' => [
+            'math',
+            'statistics',
+            'random',
+            'datetime',
+            'decimal',
+            'fractions',
+        ],
+
+        // Nonce sekali pakai untuk laporan dari browser.
+        'nonce_ttl_minutes' => (int) env('TEATER_PYODIDE_NONCE_TTL', 15),
+
+        // Level sumatif WAJIB diverifikasi guru sebelum poin diberikan.
+        'require_verification_for_summative' => (bool) env('TEATER_PYODIDE_REQUIRE_VERIFICATION', true),
+    ],
 
     /*
     | Penanda baris pemisah fungsi pada starter_code misi sumatif.
     | Contoh: "# === FUNGSI: hitung_bunga ==="
     */
     'fungsi_marker' => env('TEATER_FUNGSI_MARKER', '# === FUNGSI:'),
+
+    /*
+    | Identitas publik untuk landing page. Keduanya OPSIONAL: footer hanya
+    | menampilkannya bila terisi. Biarkan kosong bila tidak ingin dipublikasikan.
+    */
+    'landing' => [
+        'sekolah_nama' => env('TEATER_SEKOLAH_NAMA'),
+        'kontak_email' => env('TEATER_KONTAK_EMAIL'),
+    ],
 ];

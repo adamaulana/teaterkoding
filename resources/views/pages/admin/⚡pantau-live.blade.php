@@ -36,6 +36,13 @@ class extends Component
 
     public bool $jeda = false;
 
+    // ---- Rilis Kartu Bug ----
+    public ?int $rilisTeamId = null;
+
+    public ?int $rilisLevelId = null;
+
+    public ?int $rilisBugId = null;
+
     public function mount(): void
     {
         if ($this->kelasId === null) {
@@ -292,6 +299,87 @@ class extends Component
             ->limit(6)
             ->get();
     }
+
+    /**
+     * Opsi level untuk rilis kartu bug.
+     *
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function opsiLevelRilis(): array
+    {
+        return Level::query()
+            ->orderBy('level_number')
+            ->pluck('level_name', 'level_id')
+            ->all();
+    }
+
+    /**
+     * Kartu bug pada level terpilih yang belum dirilis ke tim ini.
+     *
+     * @return Collection<int, \App\Models\BugCard>
+     */
+    #[Computed]
+    public function kartuBelumDirilis(): Collection
+    {
+        if ($this->rilisTeamId === null || $this->rilisLevelId === null) {
+            return collect();
+        }
+
+        $team = Team::query()->with('schoolClass')->findOrFail($this->rilisTeamId);
+
+        abort_unless(auth()->user()->can('view', $team->schoolClass), 403);
+
+        return app(\App\Services\BugService::class)->kartuBelumDirilis($team, $this->rilisLevelId);
+    }
+
+    public function bukaRilis(int $teamId): void
+    {
+        $team = Team::query()->with('schoolClass')->findOrFail($teamId);
+
+        abort_unless(auth()->user()->can('view', $team->schoolClass), 403);
+
+        $this->rilisTeamId = $teamId;
+        $this->rilisLevelId = array_key_first($this->opsiLevelRilis);
+        $this->rilisBugId = null;
+
+        unset($this->kartuBelumDirilis);
+
+        $this->dispatch('modal-rilis-bug-open');
+    }
+
+    public function simpanRilis(): void
+    {
+        $this->validate([
+            'rilisTeamId' => ['required', 'integer'],
+            'rilisLevelId' => ['required', 'integer'],
+            'rilisBugId' => ['required', 'integer'],
+        ], [
+            'rilisBugId.required' => 'Pilih salah satu kartu bug.',
+        ]);
+
+        $team = Team::query()->with('schoolClass')->findOrFail((int) $this->rilisTeamId);
+
+        abort_unless(auth()->user()->can('view', $team->schoolClass), 403);
+
+        $kartu = \App\Models\BugCard::findOrFail((int) $this->rilisBugId);
+
+        $hasil = app(\App\Services\BugService::class)->rilis($team, $kartu, auth()->user());
+
+        unset($this->kartuBelumDirilis, $this->bugTerbaru);
+
+        if ($hasil['status'] === 'sudah_dirilis') {
+            $this->dispatch('toast', type: 'peringatan', message: 'Kartu ini sudah pernah dirilis ke kelompok tersebut.');
+
+            return;
+        }
+
+        $this->rilisTeamId = null;
+        $this->rilisBugId = null;
+
+        $this->dispatch('modal-rilis-bug-close');
+        $this->dispatch('toast', type: 'sukses', message: 'Kartu bug berhasil dirilis.');
+    }
 }; ?>
 
 <div
@@ -538,10 +626,13 @@ class extends Component
                                     <p class="text-sm font-medium text-slate-700">
                                         {{ $submission->mission?->level?->level_name ?? 'Level' }}
                                     </p>
-                                    <x-ui.badge :variant="$submission->all_passed ? 'sukses' : 'peringatan'">
+                                    <x-ui.badge :variant="$submission->status === 'menunggu_verifikasi' ? 'netral' : ($submission->all_passed ? 'sukses' : 'peringatan')">
                                         {{ $submission->results->where('is_passed', true)->count() }} /
                                         {{ $submission->results->count() }} lulus
                                     </x-ui.badge>
+                                    @if ($submission->status === 'menunggu_verifikasi')
+                                        <p class="mt-1 text-[11px] font-medium text-slate-500">Menunggu verifikasi guru</p>
+                                    @endif
                                 </div>
                                 <p class="mt-1 text-xs text-slate-400">
                                     {{ $submission->submittedBy?->full_name ?? 'Siswa' }} ·
@@ -578,10 +669,20 @@ class extends Component
             </div>
 
             <div class="border-t border-line px-5 py-4">
-                <x-ui.button variant="outline" x-on:click="panel = false; $wire.tutupPanel()">Tutup</x-ui.button>
+                <div class="flex items-center justify-between gap-2">
+                    <x-ui.button variant="outline" x-on:click="panel = false; $wire.tutupPanel()">Tutup</x-ui.button>
+                    @if ($this->timTerpilih !== null)
+                        <x-ui.button variant="primary" wire:click="bukaRilis({{ $this->timTerpilih->team_id }})">
+                            <x-ui.icon.bug class="size-4" />
+                            Rilis Kartu Bug
+                        </x-ui.button>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
 
     @endif
+
+    @include('pages.admin.partials.rilis-bug')
 

@@ -97,6 +97,9 @@ function submissionLulus(Team $team, Mission $misi, array $kasus, int $lulus, ?C
         'code_text' => 'print(1)',
         'submitted_at' => $waktu ?? Carbon::now(),
         'all_passed' => $lulus >= count($kasus),
+        // Rekap sumatif hanya menghitung hasil FINAL ('dinilai'). Tanpa status
+        // ini, kalkulator menganggap tim belum punya submission acuan.
+        'status' => Submission::STATUS_DINILAI,
     ]);
 
     foreach ($kasus as $urutan => $satu) {

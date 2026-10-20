@@ -4,6 +4,8 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+# Runtime Pyodide disalin oleh `npm run vendor:pyodide` (bukan artefak repo).
+/public/vendor/pyodide
 /storage/*.key
 /storage/pail
 /vendor

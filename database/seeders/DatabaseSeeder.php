@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             RolesSeeder::class,
             ConceptCardsSeeder::class,
             LevelsSeeder::class,
+            MateriKoperasiSeeder::class,
             AdminGuruSeeder::class,
         ]);
     }

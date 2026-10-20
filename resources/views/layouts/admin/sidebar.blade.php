@@ -27,6 +27,20 @@
 
     {{-- Menu --}}
     <nav class="flex-1 overflow-y-auto pb-6">
+        @php
+            // Angka lencana dihitung SEKALI per render lewat service bersama
+            // (dipakai juga oleh halaman Verifikasi Penilaian & Dashboard).
+            $lencanaVerifikasi = null;
+            $adaItemLencana = collect(config('admin-menu.groups'))
+                ->flatMap(fn (array $group) => $group['items'])
+                ->contains(fn (array $item) => ($item['badge'] ?? null) === 'verifikasi');
+
+            if ($adaItemLencana && auth()->user() instanceof \App\Models\User) {
+                $lencanaVerifikasi = app(\App\Services\AntreanVerifikasi::class)
+                    ->jumlahMenungguVerifikasi(auth()->user());
+            }
+        @endphp
+
         @foreach (config('admin-menu.groups') as $group)
             @php
                 $items = collect($group['items'])
@@ -65,6 +79,16 @@
                                     @class([$aktif ? 'text-primary-700' : 'text-slate-400 group-hover:text-primary-600'])
                                 />
                                 {{ $item['label'] }}
+
+                                @if (($item['badge'] ?? null) === 'verifikasi' && (int) $lencanaVerifikasi > 0)
+                                    <x-ui.badge
+                                        variant="peringatan"
+                                        class="ms-auto"
+                                        title="{{ $lencanaVerifikasi }} hasil menunggu verifikasi"
+                                    >
+                                        {{ $lencanaVerifikasi }}
+                                    </x-ui.badge>
+                                @endif
                             </a>
                         </li>
                     @else

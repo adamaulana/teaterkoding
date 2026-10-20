@@ -6,6 +6,7 @@ use App\Models\MissionPlan;
 use App\Models\SchoolClass;
 use App\Models\Submission;
 use App\Models\Team;
+use App\Services\AntreanVerifikasi;
 use App\Services\ConceptUsageAnalyzer;
 use App\Services\TeamProgress;
 use App\Services\TeamProgressResolver;
@@ -124,6 +125,18 @@ class extends Component
                 ->whereDate('submitted_at', today())
                 ->count(),
         ];
+    }
+
+    /**
+     * Antrean verifikasi guru (Fase 6). Angka dihitung service bersama yang
+     * juga dipakai sidebar & halaman Verifikasi Penilaian.
+     *
+     * @return array{menunggu_verifikasi: int, menunggu_perangkat: int, selisih: int}
+     */
+    #[Computed]
+    public function antreanVerifikasi(): array
+    {
+        return app(AntreanVerifikasi::class)->untuk(auth()->user());
     }
 
     /**
@@ -257,7 +270,7 @@ class extends Component
             </x-ui.empty-state>
         </x-ui.card>
     @else
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <x-ui.stat-card
                 label="Kelompok Aktif"
                 :value="$this->ringkasan['aktif'].' / '.$this->ringkasan['total_kelompok']"
@@ -283,6 +296,15 @@ class extends Component
                 :value="$this->ringkasan['submission_hari_ini']"
                 icon="code"
                 :hint="$this->aktivitasTerbaru->first()?->submitted_at?->diffForHumans() ?? 'Belum ada submission'"
+            />
+            {{-- Fase 6 — hasil penilaian di perangkat siswa yang menunggu guru. --}}
+            <x-ui.stat-card
+                label="Menunggu Verifikasi"
+                :value="$this->antreanVerifikasi['menunggu_verifikasi']"
+                icon="shield-check"
+                :hint="$this->antreanVerifikasi['selisih'] > 0
+                    ? $this->antreanVerifikasi['selisih'].' selisih terdeteksi'
+                    : 'Tidak ada selisih'"
             />
 
         <div class="mt-6 grid gap-6 lg:grid-cols-3">
@@ -395,8 +417,16 @@ class extends Component
                                             {{ $submission->submittedBy?->full_name ?? 'Siswa' }}
                                         </p>
                                     </div>
-                                    <x-ui.badge :variant="$submission->all_passed ? 'sukses' : 'peringatan'">
-                                        {{ $submission->all_passed ? 'Lulus' : 'Gagal' }}
+                                    <x-ui.badge :variant="$submission->status === 'menunggu' ? 'info' : ($submission->status === 'galat' ? 'bahaya' : ($submission->status === 'menunggu_verifikasi' ? 'netral' : ($submission->all_passed ? 'sukses' : 'peringatan')))">
+                                        @if ($submission->status === 'menunggu')
+                                            Menunggu
+                                        @elseif ($submission->status === 'galat')
+                                            Galat
+                                        @elseif ($submission->status === 'menunggu_verifikasi')
+                                            Verifikasi
+                                        @else
+                                            {{ $submission->all_passed ? 'Lulus' : 'Gagal' }}
+                                        @endif
                                     </x-ui.badge>
                                 </div>
                                 <p class="mt-1 text-xs text-slate-400">{{ $submission->submitted_at?->diffForHumans() }}</p>

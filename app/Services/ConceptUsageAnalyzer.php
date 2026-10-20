@@ -124,13 +124,17 @@ class ConceptUsageAnalyzer
     /**
      * Analisis untuk satu rencana misi + kode submission acuan.
      *
+     * Rencana HANYA dianggap ada bila sudah DIKUNCI (locked_at terisi). Sebelum
+     * dikunci, tim masih bisa mengubah pilihan kartu, sehingga analisis
+     * diperlakukan sebagai "belum merencanakan" (bukan "tidak pakai konsep").
+     *
      * @return array{status: string, dipilih_tak_dipakai: array<int, string>, dipakai_tak_direncanakan: array<int, string>, terdeteksi: array<int, string>}
      */
     public function analisisRencana(?MissionPlan $rencana, ?string $kode): array
     {
         // Memakai properti relasi (bukan ->concepts()->get()) supaya hasil eager
         // loading di halaman Pantau Live dipakai apa adanya, tanpa query ulang.
-        $dipilih = $rencana !== null
+        $dipilih = $rencana !== null && $rencana->terkunci()
             ? $rencana->concepts
             : collect();
 

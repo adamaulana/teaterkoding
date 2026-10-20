@@ -30,6 +30,37 @@ test('normalisasi memotong kode lebih dari 30 karakter', function () {
     expect(mb_strlen($generator->normalisasi(str_repeat('A', 50))))->toBe(30);
 });
 
+// ---------- Paritas: guru, form, dan siswa memakai aturan yang sama ----------
+
+test('form guru menormalkan kode unlock sama seperti generator', function () {
+    // MisiForm adalah Livewire Form Object yang butuh komponen induk, jadi
+    // diuji lewat komponen admin.misi (jalur yang dipakai guru sungguhan).
+    $guru = User::factory()->create(['role' => 'guru', 'is_active' => true]);
+    $level = Level::query()->orderBy('level_number')->firstOrFail();
+
+    $this->actingAs($guru);
+
+    Livewire::test('pages::admin.misi')
+        ->call('bukaTambah')
+        ->set('form.level_id', $level->level_id)
+        // Sengaja huruf kecil + karakter tidak sah: form harus menormalkan.
+        ->set('form.unlock_code', 'kop-l1-budi!')
+        ->set('form.client_brief', 'Brief dari guru.')
+        ->call('simpanMisi')
+        ->assertHasNoErrors();
+
+    // Tanda hubung DIPERTAHANKAN (bukan dibuang), sama seperti generator.
+    expect(Mission::query()->where('unlock_code', 'KOP-L1-BUDI')->exists())->toBeTrue();
+});
+
+test('tanda hubung DIPERTAHANKAN pada kode misi', function () {
+    $generator = new GenerateKodeUnlock;
+
+    // Regresi: dulu siswa memakai AccessCodeService yang membuang tanda hubung,
+    // sehingga "KOP-L1-BUDI" tidak pernah ditemukan.
+    expect($generator->normalisasi('KOP-L1-BUDI'))->toBe('KOP-L1-BUDI');
+});
+
 test('kode unlock harus unik saat menyimpan misi', function () {
     $guru = User::factory()->create(['role' => 'guru']);
     $level = Level::query()->orderBy('level_number')->firstOrFail();

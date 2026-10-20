@@ -16,7 +16,17 @@ use Illuminate\Support\Carbon;
  * @property string $code_text
  * @property Carbon $submitted_at
  * @property bool $all_passed
- * @property string $status menunggu|dinilai|galat|waktu_habis
+ * @property string $status menunggu|dinilai|galat|waktu_habis|menunggu_verifikasi
+ * @property string|null $grading_source klien|terverifikasi|server
+ * @property string|null $grading_nonce
+ * @property Carbon|null $nonce_expires_at
+ * @property array<string, mixed>|null $client_report
+ * @property int|null $client_runtime_ms
+ * @property string|null $pyodide_version
+ * @property Carbon|null $verified_at
+ * @property int|null $verified_by
+ * @property bool $has_mismatch
+ * @property array<string, mixed>|null $mismatch_detail
  * @property int $attempt_no
  * @property Carbon|null $graded_at
  * @property string|null $error_message
@@ -30,6 +40,16 @@ use Illuminate\Support\Carbon;
     'submitted_at',
     'all_passed',
     'status',
+    'grading_source',
+    'grading_nonce',
+    'nonce_expires_at',
+    'client_report',
+    'client_runtime_ms',
+    'pyodide_version',
+    'verified_at',
+    'verified_by',
+    'has_mismatch',
+    'mismatch_detail',
     'attempt_no',
     'graded_at',
     'error_message',
@@ -45,6 +65,16 @@ class Submission extends Model
     public const STATUS_GALAT = 'galat';
 
     public const STATUS_WAKTU_HABIS = 'waktu_habis';
+
+    /** Hasil perangkat siswa sudah masuk, menunggu verifikasi guru (sumatif). */
+    public const STATUS_MENUNGGU_VERIFIKASI = 'menunggu_verifikasi';
+
+    /** Asal-usul penilaian. */
+    public const SUMBER_KLIEN = 'klien';
+
+    public const SUMBER_TERVERIFIKASI = 'terverifikasi';
+
+    public const SUMBER_SERVER = 'server';
 
     protected $table = 'submissions';
 
@@ -63,6 +93,12 @@ class Submission extends Model
             'attempt_no' => 'integer',
             'graded_at' => 'datetime',
             'runtime_ms' => 'integer',
+            'nonce_expires_at' => 'datetime',
+            'client_report' => 'array',
+            'client_runtime_ms' => 'integer',
+            'verified_at' => 'datetime',
+            'has_mismatch' => 'boolean',
+            'mismatch_detail' => 'array',
         ];
     }
 
@@ -76,6 +112,7 @@ class Submission extends Model
             self::STATUS_DINILAI => 'Sudah dinilai',
             self::STATUS_GALAT => 'Galat',
             self::STATUS_WAKTU_HABIS => 'Waktu habis',
+            self::STATUS_MENUNGGU_VERIFIKASI => 'Menunggu verifikasi',
             default => 'Tidak diketahui',
         };
     }
@@ -90,6 +127,8 @@ class Submission extends Model
             self::STATUS_DINILAI => 'sukses',
             self::STATUS_GALAT => 'bahaya',
             self::STATUS_WAKTU_HABIS => 'peringatan',
+            // Netral: bukan gagal, bukan lulus.
+            self::STATUS_MENUNGGU_VERIFIKASI => 'netral',
             default => 'netral',
         };
     }
@@ -128,6 +167,16 @@ class Submission extends Model
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(Student::class, 'submitted_by');
+    }
+
+    /**
+     * Guru/admin yang memverifikasi hasil (level sumatif).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     /**

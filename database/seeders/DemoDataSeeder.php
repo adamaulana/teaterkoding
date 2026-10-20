@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\BugAttempt;
 use App\Models\BugCard;
+use App\Models\ClassLevelAccess;
+use App\Models\CodeDraft;
 use App\Models\ConceptCard;
 use App\Models\FunctionOwnership;
 use App\Models\GradingSetting;
@@ -11,6 +13,7 @@ use App\Models\Level;
 use App\Models\ManualScore;
 use App\Models\Mission;
 use App\Models\MissionPlan;
+use App\Models\Reflection;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\SchoolClass;
@@ -22,8 +25,10 @@ use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\TestCase;
 use App\Models\User;
+use App\Services\AccessCodeService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -43,140 +48,21 @@ class DemoDataSeeder extends Seeder
     /** Nama kelas demo (dibaca juga oleh perintah teater:hapus-demo). */
     private string $namaKelas;
 
-    /**
-     * Kode misi: [kode unlock, level, ringkas brief klien].
-     *
-     * @var array<int, array{0: string, 1: int, 2: string}>
-     */
-    private array $daftarMisi = [
-        ['KOP-L1-BUDI', 1, "Klien: Budi, penjual bakso keliling.\n\nBudi ingin program sederhana yang menyimpan nama pelanggan dan harga semangkuk bakso, lalu menampilkan total bayar untuk 1 porsi."],
-        ['KOP-L2-STATUS', 2, "Klien: Koperasi Sekolah.\n\nKoperasi ingin menentukan status pinjaman anggota: \"lunas\" bila saldo 0 atau kurang, \"menunggu\" bila saldo masih ada."],
-        ['KOP-L3-LOOP', 3, "Klien: Bu Rina, pengelola kantin.\n\nBu Rina ingin program yang mencetak daftar harga 5 jenis makanan tanpa menulis print berulang kali."],
-        ['KOP-L4-KASIR', 4, "Klien: Koperasi Sekolah (Ujian Sumatif).\n\nBuat fungsi hitung_total dan status_pinjaman untuk mesin kasir koperasi. Fungsi harus memakai perulangan dan percabangan agar dapat menghitung total belanja banyak barang."],
-    ];
-
-    /**
-     * Kasus uji per misi: [label, setup_code, check_target, expected_value, toleransi].
-     *
-     * @var array<string, array<int, array{0: string, 1: string|null, 2: string, 3: string, 4: float}>>
-     */
-    private array $daftarKasus = [
-        'KOP-L1-BUDI' => [
-            ['Nama pelanggan', null, 'nama_pelanggan', '"Budi"', 0],
-            ['Harga semangkuk', null, 'harga_bakso', '15000', 0],
-            ['Total 1 porsi', 'harga_bakso = 15000', 'total_bayar', '15000', 0],
-        ],
-        'KOP-L2-STATUS' => [
-            ['Pinjaman lunas', 'saldo = 0', 'status_pinjaman', '"lunas"', 0],
-            ['Pinjaman menunggu', 'saldo = 500000', 'status_pinjaman', '"menunggu"', 0],
-        ],
-        'KOP-L3-LOOP' => [
-            ['Daftar 5 harga', null, 'daftar_harga', '5', 0],
-            ['Harga pertama', null, 'harga_pertama', '3000', 0],
-        ],
-        'KOP-L4-KASIR' => [
-            ['Total satu barang', null, 'hitung_total(1, 5000)', '5000', 0],
-            ['Total banyak barang', null, 'hitung_total(4, 2500)', '10000', 0],
-            ['Total nol barang', null, 'hitung_total(0, 3000)', '0', 0],
-            ['Status lunas', 'saldo = 0', 'status_pinjaman(0)', '"lunas"', 0],
-            ['Status menunggu', null, 'status_pinjaman(250000)', '"menunggu"', 0],
-        ],
-    ];
-
-    /**
-     * Kartu bug: [level, judul, kode bermasalah, petunjuk, kunci, poin].
-     *
-     * @var array<int, array{0: int, 1: string, 2: string, 3: string, 4: string, 5: int}>
-     */
-    private array $daftarBug = [
-        [1, 'Salah tulis variabel', "nama = \"Budi\"\nprint(nama_pelanggan)", 'Periksa nama variabel yang dicetak.', 'Nama variabel saat dibuat dan saat dipakai harus sama.', 10],
-        [1, 'Kutip tidak ditutup', "nama = \"Budi\nprint(nama)", 'Perhatikan tanda kutip pada baris pertama.', 'Tutup string dengan tanda kutip pasangannya.', 10],
-        [2, 'Salah operator perbandingan', "saldo = 0\nif saldo = 0:\n    print(\"lunas\")", 'Python membedakan = dan ==.', 'Gunakan == untuk membandingkan nilai.', 10],
-        [2, 'Kondisi terbalik', "saldo = 500000\nif saldo == 0:\n    print(\"menunggu\")\nelse:\n    print(\"lunas\")", 'Cek ulang cabang mana yang benar.', 'Pertukarkan isi cabang if dan else.', 10],
-        [3, 'Perulangan tidak jalan', "for i in range(0):\n    print(3000)", 'Berapa kali range(0) mengulang?', 'range(5) mengulang lima kali.', 15],
-        [3, 'Indentasi hilang', "for i in range(5):\nprint(3000)", 'Python sangat ketat soal indentasi.', 'Isi perulangan harus menjorok ke dalam.', 15],
-        [4, 'Akumulator tidak ditambah', "def hitung_total(jumlah, harga):\n    total = 0\n    for i in range(jumlah):\n        total = harga\n    return total", 'Hitung total belanja banyak barang.', 'Tambahkan harga ke total, bukan menggantinya (total += harga).', 20],
-        [4, 'Fungsi tidak mengembalikan nilai', "def status_pinjaman(saldo):\n    if saldo <= 0:\n        status = \"lunas\"", 'Fungsi tidak memberi hasil ke pemanggil.', 'Tambahkan return pada setiap cabang.', 20],
-    ];
-
     public function run(): void
     {
         $this->namaKelas = (string) config('teater.demo_class_name', '[DEMO] X RPL');
 
+        // MATERI bukan tanggung jawab seeder ini: MateriKoperasiSeeder adalah
+        // satu-satunya sumber materi (level, misi, kasus uji, kartu konsep,
+        // kartu bug, kasus uji bug, starter_code, symptom_text).
+        $this->call(MateriKoperasiSeeder::class);
+
         DB::transaction(function (): void {
-            $this->seedMateriMinimal();
             $this->seedKelas();
         });
 
         if ($this->command !== null) {
             $this->command->info('Data demo Fase 4 siap. Hapus dengan: php artisan teater:hapus-demo');
-        }
-    }
-
-    /**
-     * Materi minimal (level, misi, kasus uji, kartu bug) — hanya dibuat bila
-     * belum ada, memakai updateOrCreate agar tidak menimpa materi guru.
-     */
-    private function seedMateriMinimal(): void
-    {
-        // Level 1-4 (hanya level 4 sumatif) — idempoten.
-        foreach ([1, 2, 3, 4] as $nomor) {
-            Level::updateOrCreate(
-                ['level_number' => $nomor],
-                [
-                    'level_name' => 'Level '.$nomor,
-                    'is_summative' => $nomor === 4,
-                ],
-            );
-        }
-
-        // Kartu konsep dasar.
-        foreach (['Variabel', 'Operator', 'If/Else', 'Loop', 'Function'] as $namaKonsep) {
-            ConceptCard::firstOrCreate(['concept_name' => $namaKonsep]);
-        }
-
-        $levelPerNomor = Level::query()->pluck('level_id', 'level_number');
-
-        foreach ($this->daftarMisi as [$kode, $nomorLevel, $brief]) {
-            $misi = Mission::updateOrCreate(
-                ['unlock_code' => $kode],
-                [
-                    'level_id' => $levelPerNomor[$nomorLevel],
-                    'client_brief' => $brief,
-                ],
-            );
-
-            foreach ($this->daftarKasus[$kode] as $urutan => [$label, $setup, $target, $expected, $toleransi]) {
-                TestCase::updateOrCreate(
-                    [
-                        'mission_id' => $misi->mission_id,
-                        'label' => $label,
-                    ],
-                    [
-                        'setup_code' => $setup,
-                        'check_target' => $target,
-                        'expected_value' => $expected,
-                        'tolerance' => $toleransi,
-                    ],
-                );
-            }
-        }
-
-        $levelPerNomor = Level::query()->pluck('level_id', 'level_number');
-
-        foreach ($this->daftarBug as [$nomorLevel, $judul, $kode, $petunjuk, $kunci, $poin]) {
-            BugCard::updateOrCreate(
-                [
-                    'level_id' => $levelPerNomor[$nomorLevel],
-                    'bug_title' => $judul,
-                ],
-                [
-                    'buggy_code' => $kode,
-                    'hint_text' => $petunjuk,
-                    'fix_explanation' => $kunci,
-                    'points' => $poin,
-                ],
-            );
         }
     }
 
@@ -205,6 +91,157 @@ class DemoDataSeeder extends Seeder
 
         $this->seedPenugasanPeran($kelompok);
         $this->seedPermainan($kelompok);
+        $this->seedAksesLevel($kelas);
+        $this->seedDrafRefleksiDanBug($kelompok);
+        $this->cetakKodeAkses($siswa);
+    }
+
+    /**
+     * Buat kode akses untuk siswa demo (8 karakter, unik) — idempoten.
+     *
+     * @param  array<int, Student>  $siswa
+     */
+    private function cetakKodeAkses(array $siswa): void
+    {
+        $servis = app(AccessCodeService::class);
+
+        $daftar = [];
+
+        foreach ($siswa as $satu) {
+            if ($satu->access_code === null) {
+                $kode = $this->kodeUnik($servis);
+                $satu->forceFill([
+                    'access_code' => $kode,
+                    'access_code_generated_at' => now(),
+                ])->save();
+            }
+
+            $daftar[] = [$satu->full_name, $servis->display((string) $satu->access_code)];
+        }
+
+        if ($this->command !== null) {
+            $this->command->newLine();
+            $this->command->info('Kode akses siswa demo (login di /siswa/masuk):');
+
+            foreach ($daftar as [$nama, $kode]) {
+                $this->command->line("  {$kode}  {$nama}");
+            }
+
+            $this->command->newLine();
+        }
+    }
+
+    private function kodeUnik(AccessCodeService $servis): string
+    {
+        do {
+            $kode = $servis->generate();
+        } while (Student::query()->where('access_code', $kode)->exists());
+
+        return $kode;
+    }
+
+    /**
+     * Buka akses level 1-4 untuk kelas demo (idempoten).
+     */
+    private function seedAksesLevel(SchoolClass $kelas): void
+    {
+        foreach (Level::query()->pluck('level_id') as $levelId) {
+            ClassLevelAccess::updateOrCreate(
+                ['class_id' => $kelas->class_id, 'level_id' => $levelId],
+                ['is_open' => true],
+            );
+        }
+    }
+
+    /**
+     * Draf kode, refleksi, dan satu kartu bug yang sudah dirilis (idempoten).
+     *
+     * @param  array<string, Team>  $kelompok
+     */
+    private function seedDrafRefleksiDanBug(array $kelompok): void
+    {
+        $misiL1 = Mission::query()->where('unlock_code', 'KOP-L1-BUDI')->first();
+        $level1 = Level::query()->where('level_number', 1)->value('level_id');
+        $guru = User::query()->where('role', 'guru')->value('id');
+
+        foreach ($kelompok as $namaTim => $team) {
+            $anggota = TeamMember::query()
+                ->where('team_id', $team->team_id)
+                ->orderBy('team_member_id')
+                ->pluck('student_id')
+                ->values();
+
+            if ($anggota->isEmpty()) {
+                continue;
+            }
+
+            // Draf program utama untuk misi L1.
+            if ($misiL1 !== null) {
+                CodeDraft::updateOrCreate(
+                    [
+                        'team_id' => $team->team_id,
+                        'mission_id' => $misiL1->mission_id,
+                        'function_name' => CodeDraft::PROGRAM_UTAMA,
+                    ],
+                    [
+                        'code_text' => $this->kodeContoh($misiL1->mission_id, $namaTim === 'Kelompok Echo'),
+                        'owner_student_id' => $anggota->first(),
+                        'updated_by' => $anggota->first(),
+                        'version' => 1,
+                    ],
+                );
+
+                // Refleksi pribadi untuk tiap anggota (level 1).
+                foreach ($anggota as $studentId) {
+                    Reflection::updateOrCreate(
+                        [
+                            'student_id' => $studentId,
+                            'mission_id' => $misiL1->mission_id,
+                            'type' => Reflection::TYPE_REFLEKSI,
+                        ],
+                        [
+                            'team_id' => $team->team_id,
+                            'body' => 'Saya belajar memakai variabel untuk menyimpan nilai pelanggan dan harga, lalu menghitung totalnya.',
+                        ],
+                    );
+                }
+            }
+
+            // Kartu bug demo: pilih HANYA kartu yang punya kasus uji, lalu rilis
+            // dengan tiga keadaan berbeda agar UI bisa diuji:
+            //   1) belum dikerjakan, 2) sudah pakai petunjuk, 3) sudah solved.
+            // Diambil dari beberapa level agar ketiga keadaan benar-benar ada.
+            $kartu = BugCard::query()
+                ->whereHas('testCases')
+                ->orderBy('level_id')
+                ->orderBy('bug_id')
+                ->get()
+                ->values();
+
+            $keadaan = [
+                ['solved' => false, 'hints' => 0],
+                ['solved' => false, 'hints' => 1],
+                ['solved' => true, 'hints' => 0],
+            ];
+
+            foreach ($kartu->take(3) as $urutan => $satu) {
+                $status = $keadaan[$urutan % count($keadaan)];
+
+                BugAttempt::updateOrCreate(
+                    ['bug_id' => $satu->bug_id, 'team_id' => $team->team_id],
+                    [
+                        'released_by' => $guru,
+                        'released_at' => now()->subMinutes(5),
+                        'fixed_code' => $status['solved'] ? $satu->fix_explanation : null,
+                        'is_solved' => $status['solved'],
+                        'solved_at' => $status['solved'] ? now()->subMinutes(3) : null,
+                        'grading_status' => $status['solved'] ? BugAttempt::STATUS_DINILAI : BugAttempt::STATUS_BELUM,
+                        'hints_used' => $status['hints'],
+                        'attempted_at' => now()->subMinutes(5),
+                    ],
+                );
+            }
+        }
     }
 
     /**
@@ -421,6 +458,38 @@ class DemoDataSeeder extends Seeder
         $this->nilaiManual($kelompok['Kelompok Echo'], (int) $misi['KOP-L4-KASIR']);
         $this->percobaanBug($kelompok['Kelompok Echo'], 8, $menit(2));
 
+        // ---- Fase 6: antrean verifikasi guru ----
+        // Echo mengirim versi sumatif yang SUDAH dinilai perangkat tetapi belum
+        // diverifikasi guru (tanpa poin). Satu di antaranya punya SELISIH:
+        // perangkat mengaku lulus sebuah kasus yang sebenarnya gagal.
+        $this->submissionMenungguVerifikasi(
+            $kelompok['Kelompok Echo'],
+            (int) $misi['KOP-L4-KASIR'],
+            lulus: 11,
+            waktu: $menit(2),
+            kode: $this->kodeAcuanLevel4(),
+        );
+
+        $this->submissionMenungguVerifikasi(
+            $kelompok['Kelompok Echo'],
+            (int) $misi['KOP-L4-KASIR'],
+            lulus: 12,
+            waktu: $menit(1),
+            kode: $this->kodeAcuanLevel4(),
+            selisih: true,
+        );
+
+        // Charlie sudah submit formatif, tetapi penilaian di perangkat belum
+        // selesai (status 'menunggu' + nonce masih berlaku).
+        $this->submissionMenungguPerangkat(
+            $kelompok['Kelompok Charlie'],
+            (int) $misi['KOP-L1-BUDI'],
+            $menit(1),
+        );
+
+        // Satu kartu bug sumatif (level 4) menunggu verifikasi guru.
+        $this->bugMenungguVerifikasi($kelompok['Kelompok Echo'], $menit(1));
+
         // ---- Foxtrot: MACET — 5 submission gagal beruntun pada level 1 ----
         // Semua percobaan sengaja berumur > ambang macet (10 menit) agar
         // kelompok ini terdeteksi "5 kali gagal beruntun".
@@ -448,7 +517,7 @@ class DemoDataSeeder extends Seeder
     {
         $rencana = MissionPlan::updateOrCreate(
             ['team_id' => $team->team_id, 'mission_id' => $missionId],
-            ['planned_at' => $waktu],
+            ['planned_at' => $waktu, 'locked_at' => $waktu],
         );
 
         $conceptIds = ConceptCard::query()->whereIn('concept_name', $konsep)->pluck('concept_id')->all();
@@ -483,14 +552,26 @@ class DemoDataSeeder extends Seeder
             'code_text' => $kode ?? $this->kodeContoh($missionId, $lulus >= $total),
             'submitted_at' => $waktu,
             'all_passed' => $lulus >= $total,
+            'status' => Submission::STATUS_DINILAI,
+            'attempt_no' => (int) Submission::query()
+                ->where('team_id', $team->team_id)
+                ->where('mission_id', $missionId)
+                ->count() + 1,
+            'graded_at' => $waktu,
         ]);
 
         foreach ($kasus as $urutan => $satu) {
+            $lulus = $urutan < $lulus;
+
             SubmissionResult::create([
                 'submission_id' => $submission->submission_id,
                 'test_case_id' => $satu->test_case_id,
-                'is_passed' => $urutan < $lulus,
-                'actual_value' => $urutan < $lulus ? (string) $satu->expected_value : 'None',
+                'is_passed' => $lulus,
+                // Yang lulus: nilai sesuai harapan. Yang gagal: nilai masuk akal
+                // yang BUKAN kunci (mis. hasil perhitungan keliru / tipe salah).
+                'actual_value' => $lulus
+                    ? (string) $satu->expected_value
+                    : $this->nilaiGagalWajar((string) $satu->expected_value),
             ]);
         }
 
@@ -514,6 +595,30 @@ class DemoDataSeeder extends Seeder
         }
 
         return $submission;
+    }
+
+    /**
+     * Nilai "gagal" yang masuk akal untuk kode demo — BUKAN kunci jawaban.
+     * Angka digeser sedikit; string/boolean diberi nilai tiruan.
+     */
+    private function nilaiGagalWajar(string $expected): string
+    {
+        if (is_numeric($expected)) {
+            $angka = (float) $expected;
+
+            // Geser ~10% agar terlihat seperti salah hitung, bukan nol polos.
+            $geser = $angka !== 0.0 ? $angka * 0.9 : 1.0;
+
+            return str_contains($expected, '.')
+                ? (string) round($geser, 1)
+                : (string) (int) round($geser);
+        }
+
+        return match ($expected) {
+            'True' => 'False',
+            'False' => 'True',
+            default => 'nilai_tiruan',
+        };
     }
 
     /**
@@ -601,10 +706,23 @@ class DemoDataSeeder extends Seeder
 
     /**
      * Percobaan kartu bug + poinnya (bonus saat terpecahkan, penalti petunjuk).
+     *
+     * Hanya kartu yang punya kasus uji yang dipakai, dan setiap baris diisi
+     * released_at/grading_status agar konsisten dengan alur Fase 5.
      */
     private function percobaanBug(Team $team, int $jumlah, Carbon $waktu): void
     {
-        $kartu = BugCard::query()->orderBy('bug_id')->limit($jumlah)->get();
+        $kartu = BugCard::query()
+            ->whereHas('testCases')
+            ->orderBy('bug_id')
+            ->limit($jumlah)
+            ->get();
+
+        if ($kartu->isEmpty()) {
+            return;
+        }
+
+        $guru = User::query()->where('role', 'guru')->value('id');
 
         // Sebar percobaan ke BELAKANG dari $waktu (bukan ke depan) supaya
         // tidak ada timestamp di masa depan — percobaan terakhir = $waktu.
@@ -621,8 +739,12 @@ class DemoDataSeeder extends Seeder
                     'team_id' => $team->team_id,
                 ],
                 [
+                    'released_by' => $guru,
+                    'released_at' => $kapan,
                     'fixed_code' => $selesai ? $satu->fix_explanation : null,
                     'is_solved' => $selesai,
+                    'solved_at' => $selesai ? $kapan : null,
+                    'grading_status' => $selesai ? BugAttempt::STATUS_DINILAI : BugAttempt::STATUS_BELUM,
                     'hints_used' => $selesai ? 0 : 1,
                     'attempted_at' => $kapan,
                 ],
@@ -649,6 +771,224 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
+     * Kode acuan Level 4 (jawaban benar) — dipakai data demo verifikasi.
+     */
+    private function kodeAcuanLevel4(): string
+    {
+        return "def hitung_bunga(saldo, persen):\n"
+            ."    return saldo * persen / 100\n\n"
+            ."def cek_status(saldo):\n"
+            ."    if saldo < 0:\n"
+            ."        return \"Data tidak valid\"\n"
+            ."    elif saldo >= 10_000_000:\n"
+            ."        return \"Gold\"\n"
+            ."    elif saldo >= 5_000_000:\n"
+            ."        return \"Silver\"\n"
+            ."    else:\n"
+            ."        return \"Reguler\"\n\n"
+            ."def boleh_pinjam(saldo):\n"
+            ."    return cek_status(saldo) in (\"Gold\", \"Silver\")\n\n"
+            ."def hitung_jumlah(daftar_saldo, status):\n"
+            ."    n = 0\n"
+            ."    for s in daftar_saldo:\n"
+            ."        if cek_status(s) == status:\n"
+            ."            n += 1\n"
+            ."    return n\n\n"
+            ."def simulasi_tabungan(saldo_awal, setoran_bulanan, bulan, persen_bunga):\n"
+            ."    saldo = saldo_awal\n"
+            ."    for _ in range(bulan):\n"
+            ."        saldo += setoran_bulanan\n"
+            ."        saldo += hitung_bunga(saldo, persen_bunga)\n"
+            .'    return saldo';
+    }
+
+    /**
+     * Submission SUMATIF yang sudah dinilai perangkat tetapi belum diverifikasi
+     * guru (status 'menunggu_verifikasi').
+     *
+     * PENTING: helper ini TIDAK membuat ScoreEntry — poin hanya boleh diberikan
+     * setelah guru memverifikasi (VerifikasiHasil). Inilah bedanya dengan
+     * submission() biasa yang selalu 'dinilai' + poin.
+     *
+     * @param  int  $lulus  jumlah kasus uji yang lulus (sisanya gagal)
+     * @param  bool  $selisih  tandai satu kasus sebagai selisih klaim perangkat
+     */
+    private function submissionMenungguVerifikasi(
+        Team $team,
+        int $missionId,
+        int $lulus,
+        Carbon $waktu,
+        string $kode,
+        bool $selisih = false,
+    ): Submission {
+        $pengirim = (int) TeamMember::query()
+            ->where('team_id', $team->team_id)
+            ->orderBy('team_member_id')
+            ->value('student_id');
+
+        $kasus = TestCase::query()
+            ->where('mission_id', $missionId)
+            ->orderBy('test_case_id')
+            ->get();
+
+        $submission = Submission::create([
+            'team_id' => $team->team_id,
+            'mission_id' => $missionId,
+            'submitted_by' => $pengirim,
+            'code_text' => $kode,
+            'submitted_at' => $waktu,
+            'all_passed' => false,
+            'status' => Submission::STATUS_MENUNGGU_VERIFIKASI,
+            'grading_source' => Submission::SUMBER_KLIEN,
+            'client_report' => [
+                'keluaran' => "Gold: 1\nSilver: 3\nReguler: 1\n",
+                'galat' => null,
+                'durasi_ms' => 412,
+                'versi_pyodide' => (string) config('teater.pyodide.version', '314.0.7'),
+                'jumlah_hasil' => $kasus->count(),
+                'diterima_pada' => $waktu->toIso8601String(),
+            ],
+            'client_runtime_ms' => 412,
+            'pyodide_version' => (string) config('teater.pyodide.version', '314.0.7'),
+            'attempt_no' => (int) Submission::query()
+                ->where('team_id', $team->team_id)
+                ->where('mission_id', $missionId)
+                ->count() + 1,
+            'graded_at' => $waktu,
+            'has_mismatch' => $selisih,
+            'mismatch_detail' => $selisih ? $this->detailSelisihDemo($kasus, $lulus) : null,
+        ]);
+
+        foreach ($kasus as $urutan => $satu) {
+            $lulusKasus = $urutan < $lulus;
+
+            SubmissionResult::create([
+                'submission_id' => $submission->submission_id,
+                'test_case_id' => $satu->test_case_id,
+                'is_passed' => $lulusKasus,
+                'actual_value' => $lulusKasus
+                    ? (string) $satu->expected_value
+                    : $this->nilaiGagalWajar((string) $satu->expected_value),
+            ]);
+        }
+
+        return $submission;
+    }
+
+    /**
+     * Detail selisih contoh: satu kasus GAGAL yang diklaim LULUS oleh perangkat.
+     *
+     * Bentuknya sama dengan mismatch_detail yang dihasilkan server, sehingga
+     * UI guru bisa memakai satu tampilan untuk keduanya.
+     *
+     * @param  Collection<int, TestCase>  $kasus
+     * @return array<string, mixed>
+     */
+    private function detailSelisihDemo($kasus, int $lulus): array
+    {
+        $pertama = $kasus->get($lulus) ?? $kasus->first();
+
+        return [
+            'sumber' => 'perangkat-guru',
+            'jumlah' => 1,
+            'kasus' => [[
+                'test_case_id' => (int) ($pertama?->test_case_id ?? 0),
+                'sebelum' => [
+                    'is_passed' => true,
+                    'actual_value' => (string) ($pertama?->expected_value ?? ''),
+                ],
+                'sesudah' => [
+                    'is_passed' => false,
+                    'actual_value' => $this->nilaiGagalWajar((string) ($pertama?->expected_value ?? '')),
+                ],
+            ]],
+            'dibandingkan_pada' => now()->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Submission FORMATIF yang sudah dikirim tetapi penilaian di perangkat
+     * belum selesai: status 'menunggu' + nonce masih berlaku.
+     *
+     * Tanpa hasil kasus uji (perangkat belum melaporkan apa pun) dan tanpa
+     * poin — persis seperti kondisi setelah submit pada runner pyodide.
+     */
+    private function submissionMenungguPerangkat(Team $team, int $missionId, Carbon $waktu): Submission
+    {
+        $pengirim = (int) TeamMember::query()
+            ->where('team_id', $team->team_id)
+            ->orderBy('team_member_id')
+            ->value('student_id');
+
+        return Submission::create([
+            'team_id' => $team->team_id,
+            'mission_id' => $missionId,
+            'submitted_by' => $pengirim,
+            'code_text' => $this->kodeContoh($missionId, false),
+            'submitted_at' => $waktu,
+            'all_passed' => false,
+            'status' => Submission::STATUS_MENUNGGU,
+            'attempt_no' => (int) Submission::query()
+                ->where('team_id', $team->team_id)
+                ->where('mission_id', $missionId)
+                ->count() + 1,
+            'grading_nonce' => bin2hex(random_bytes(32)),
+            'nonce_expires_at' => now()->addMinutes(
+                (int) config('teater.pyodide.nonce_ttl_minutes', 15),
+            ),
+        ]);
+    }
+
+    /**
+     * Satu percobaan Kartu Bug SUMATIF yang menunggu verifikasi guru.
+     *
+     * Memakai kartu pada level sumatif yang punya kasus uji, lalu mengisi hasil
+     * per kasus dari kode perbaikan yang benar — TANPA poin (menunggu guru).
+     */
+    private function bugMenungguVerifikasi(Team $team, Carbon $waktu): void
+    {
+        $levelSumatif = Level::query()->where('is_summative', true)->value('level_id');
+
+        $kartu = BugCard::query()
+            ->when($levelSumatif !== null, fn ($q) => $q->where('level_id', $levelSumatif))
+            ->whereHas('testCases')
+            ->orderBy('bug_id')
+            ->first();
+
+        if ($kartu === null) {
+            return;
+        }
+
+        $attempt = BugAttempt::updateOrCreate(
+            ['bug_id' => $kartu->bug_id, 'team_id' => $team->team_id],
+            [
+                'released_by' => User::query()->where('role', 'guru')->value('id'),
+                'released_at' => $waktu,
+                'fixed_code' => $kartu->fix_explanation,
+                'is_solved' => false,
+                'solved_at' => null,
+                'grading_status' => BugAttempt::STATUS_MENUNGGU_VERIFIKASI,
+                'grading_source' => BugAttempt::SUMBER_KLIEN,
+                'client_report' => [
+                    'keluaran' => '',
+                    'galat' => null,
+                    'durasi_ms' => 180,
+                    'versi_pyodide' => (string) config('teater.pyodide.version', '314.0.7'),
+                ],
+                'hints_used' => 0,
+                'attempted_at' => $waktu,
+            ],
+        );
+
+        foreach ($kartu->testCases as $satu) {
+            $attempt->results()->updateOrCreate(
+                ['attempt_id' => $attempt->attempt_id, 'bug_test_case_id' => $satu->id],
+                ['is_passed' => true, 'actual_value' => (string) $satu->expected_value],
+            );
+        }
+    }
+
+    /**
      * Teks kode Python contoh per misi (untuk halaman Riwayat Submission &
      * analisis konsep). Isinya sengaja mengandung komentar/string yang
      * menyebut konsep agar heuristik ConceptUsageAnalyzer teruji.
@@ -659,13 +999,13 @@ class DemoDataSeeder extends Seeder
 
         return match ($kode) {
             'KOP-L1-BUDI' => $lulus
-                ? "nama_pelanggan = \"Budi\"\nharga_bakso = 15000\ntotal_bayar = harga_bakso * 1\nprint(nama_pelanggan, total_bayar)"
-                : "nama = \"Budi\"\nharga_bakso = 15000\nprint(nama)",
-            'KOP-L2-STATUS' => "saldo = 0\n\nif saldo <= 0:\n    status_pinjaman = \"lunas\"\nelse:\n    status_pinjaman = \"menunggu\"\n\nprint(status_pinjaman)",
-            'KOP-L3-LOOP' => "daftar_harga = []\n\nfor i in range(5):\n    daftar_harga.append(3000)\n\nharga_pertama = daftar_harga[0]",
+                ? "saldo_awal = 2_500_000\nsetoran_1 = 500_000\nsetoran_2 = 750_000\nsetoran_3 = 250_000\ntotal_setoran = setoran_1 + setoran_2 + setoran_3\nbunga = (saldo_awal + total_setoran) * 0.005\nsaldo_akhir = saldo_awal + total_setoran + bunga\npenarikan = 1_250_000\nlembar = penarikan // 100_000\nsisa = penarikan % 100_000"
+                : "saldo_awal = 2_500_000\nsetoran_1 = 500_000\ntotal_setoran = setoran_1\nbunga = saldo_awal * 0.005",
+            'KOP-L2-STATUS' => "if saldo < 0:\n    status = \"Data tidak valid\"\n    pinjaman = \"Tidak\"\nelif saldo >= 10_000_000:\n    status = \"Gold\"\n    pinjaman = \"Boleh\"\nelif saldo >= 5_000_000:\n    status = \"Silver\"\n    pinjaman = \"Boleh\"\nelse:\n    status = \"Reguler\"\n    pinjaman = \"Tidak\"",
+            'KOP-L3-LOOP' => "saldo_tabungan = 1_000_000\nfor bulan in range(12):\n    saldo_tabungan += 300_000\n    saldo_tabungan += saldo_tabungan * 0.005\n\ndaftar_saldo = [12_000_000, 6_500_000, 3_000_000, 9_999_999, 5_000_000]\ntotal_saldo = 0\njumlah_gold = 0\njumlah_silver = 0\njumlah_reguler = 0\nfor saldo in daftar_saldo:\n    total_saldo += saldo\n    if saldo >= 10_000_000:\n        jumlah_gold += 1\n    elif saldo >= 5_000_000:\n        jumlah_silver += 1\n    else:\n        jumlah_reguler += 1",
             'KOP-L4-KASIR' => $lulus
-                ? "def hitung_total(jumlah, harga):\n    total = 0\n    for i in range(jumlah):\n        total += harga\n    return total\n\n\ndef status_pinjaman(saldo):\n    if saldo <= 0:\n        return \"lunas\"\n    else:\n        return \"menunggu\""
-                : "def hitung_total(jumlah, harga):\n    # belum memakai perulangan\n    return harga",
+                ? "def hitung_bunga(saldo, persen):\n    return saldo * persen / 100\n\ndef cek_status(saldo):\n    if saldo < 0:\n        return \"Data tidak valid\"\n    elif saldo >= 10_000_000:\n        return \"Gold\"\n    elif saldo >= 5_000_000:\n        return \"Silver\"\n    else:\n        return \"Reguler\"\n\ndef boleh_pinjam(saldo):\n    return cek_status(saldo) in [\"Gold\", \"Silver\"]\n\ndef hitung_jumlah(daftar_saldo, status):\n    jumlah = 0\n    for saldo in daftar_saldo:\n        if cek_status(saldo) == status:\n            jumlah += 1\n    return jumlah\n\ndef simulasi_tabungan(saldo_awal, setoran_bulanan, bulan, persen_bunga):\n    saldo = saldo_awal\n    for i in range(bulan):\n        saldo += setoran_bulanan\n        saldo += hitung_bunga(saldo, persen_bunga)\n    return saldo"
+                : "def hitung_bunga(saldo, persen):\n    # belum dibagi 100\n    return saldo * persen\n\ndef cek_status(saldo):\n    return \"Reguler\"",
             default => 'print("kode demo")',
         };
     }

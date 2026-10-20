@@ -120,9 +120,10 @@ test('menandai belum merencanakan bila tidak ada kartu dipilih', function () {
         ->and($hasil['terdeteksi'])->toContain('Variabel');
 });
 
-test('analisisRencana membaca kartu konsep dari rencana misi', function () {
+test('analisisRencana membaca kartu konsep dari rencana misi yang terkunci', function () {
     $rencana = new MissionPlan;
     $rencana->setRelation('concepts', ConceptCard::query()->where('concept_name', 'Loop')->get());
+    $rencana->locked_at = now();
 
     $hasil = $this->analisis->analisisRencana($rencana, 'nama = "Budi"');
 
@@ -133,6 +134,16 @@ test('analisisRencana membaca kartu konsep dari rencana misi', function () {
 test('analisisRencana tanpa rencana dianggap belum merencanakan', function () {
     expect($this->analisis->analisisRencana(null, 'nama = "Budi"')['status'])
         ->toBe(ConceptUsageAnalyzer::HASIL_BELUM_MERENCANAKAN);
+});
+
+test('analisisRencana dengan rencana belum terkunci dianggap belum merencanakan', function () {
+    $rencana = new MissionPlan;
+    $rencana->setRelation('concepts', ConceptCard::query()->where('concept_name', 'Loop')->get());
+    $rencana->locked_at = null;
+
+    $hasil = $this->analisis->analisisRencana($rencana, 'nama = "Budi"');
+
+    expect($hasil['status'])->toBe(ConceptUsageAnalyzer::HASIL_BELUM_MERENCANAKAN);
 });
 
 test('label dan varian mengikuti status', function () {

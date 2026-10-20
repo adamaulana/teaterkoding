@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Contracts\GradingRunner;
+use App\Grading\FakeGradingRunner;
+use App\Grading\NullGradingRunner;
 use App\Models\User;
+use App\Services\AntreanVerifikasi;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +21,29 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->registerGradingRunner();
+
+        // Antrean verifikasi menyimpan cache per pengguna; `scoped` menjamin
+        // cache itu hidup hanya selama satu request (aman untuk queue/Octane
+        // dan tidak bocor antar-test).
+        $this->app->scoped(AntreanVerifikasi::class, fn () => new AntreanVerifikasi);
+    }
+
+    /**
+     * Pilih penilai otomatis sesuai config('teater.runner').
+     *
+     *   'fake'    → FakeGradingRunner (HANYA local/testing)
+     *   'pyodide' → NullGradingRunner; penilaian terjadi di BROWSER siswa.
+     *               Tidak ada kode siswa yang dijalankan di server.
+     *   null      → NullGradingRunner (tidak menilai)
+     */
+    protected function registerGradingRunner(): void
+    {
+        $this->app->bind(GradingRunner::class, function () {
+            return config('teater.runner') === 'fake'
+                ? new FakeGradingRunner
+                : new NullGradingRunner;
+        });
     }
 
     /**

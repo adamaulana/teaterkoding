@@ -3,17 +3,30 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vp build",
+        "build": "node scripts/vendor-pyodide.mjs && vp build",
         "dev": "vp dev",
-        "icons": "node scripts/generate-icons.mjs"
+        "icons": "node scripts/generate-icons.mjs",
+        "vendor:pyodide": "node scripts/vendor-pyodide.mjs",
+        "uji:penilai": "node scripts/uji-penilai-runtime.mjs && node scripts/uji-orkestrasi-penilai.mjs",
+        "uji:editor": "node scripts/uji-editor-kode.mjs",
+        "uji:jadwal": "node scripts/uji-penilai-jadwal.mjs",
+        "test:pyodide": "node tests/Pyodide/uji-pyodide.mjs",
+        "test:pyodide:data": "node scripts/siapkan-data-pyodide.mjs --paksa",
+        "postinstall": "node scripts/vendor-pyodide.mjs"
     },
     "dependencies": {
+        "@codemirror/commands": "^6.11.1",
+        "@codemirror/lang-python": "^6.2.1",
+        "@codemirror/state": "^6.7.6",
+        "@codemirror/view": "^6.43.14",
         "@fontsource-variable/inter": "^5.2.6",
         "@laravel/passkeys": "^0.2.0",
         "@tabler/icons": "^3.31.0",
         "@tailwindcss/vite": "^4.3.3",
+        "codemirror": "^6.0.2",
         "concurrently": "^10.0.3",
         "laravel-vite-plugin": "^3.1",
+        "pyodide": "314.0.7",
         "tailwindcss": "^4.3.3",
         "vite": "^8.0.0",
         "vite-plus": "0.3.0"

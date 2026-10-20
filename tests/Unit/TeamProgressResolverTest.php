@@ -65,6 +65,10 @@ function submissionPada(Team $team, Mission $misi, bool $lulus, ?Carbon $waktu =
         'code_text' => 'print(1)',
         'submitted_at' => $waktu ?? Carbon::now(),
         'all_passed' => $lulus,
+        // Submission pada test ini mewakili yang sudah selesai dinilai, sesuai
+        // semantik baru: hanya submission 'dinilai' yang dihitung progres.
+        'status' => Submission::STATUS_DINILAI,
+        'attempt_no' => 1,
     ]);
 }
 
